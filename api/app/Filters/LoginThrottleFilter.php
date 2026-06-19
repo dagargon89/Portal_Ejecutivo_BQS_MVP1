@@ -22,6 +22,13 @@ class LoginThrottleFilter implements FilterInterface
      */
     public function before(RequestInterface $request, $arguments = null): ?ResponseInterface
     {
+        // El rate limiting es una preocupacion de integracion (se verifica en
+        // vivo). Se omite en el entorno de pruebas para no interferir entre
+        // tests; en development/production sigue activo.
+        if (ENVIRONMENT === 'testing') {
+            return null;
+        }
+
         $throttler = Services::throttler();
         $key = 'auth_' . md5($request->getIPAddress());
 

@@ -1,0 +1,4 @@
+ID_Cotizacion,Cliente,PO_Referencia,Monto_Autorizado,Piezas_Autorizadas,Estatus
+COT-0001,NIDEC Mobility,PO-100,100000.00,5000,Aprobada
+COT-0002,Nidec México,PO-200,150000.00,7000,Aprobada
+COT-0003,Bocar,PO-300,80000,4000,Aprobada

@@ -17,10 +17,12 @@
 /api/writable/session/*
 /api/writable/debugbar/*
 /api/writable/uploads/*
+/api/writable/imports/*
 !/api/writable/**/index.html
 /api/php_errors.log
 /api/builds
 /api/.phpunit.cache/
+/api/.php-cs-fixer.cache
 /api/phpstan-baseline.neon.tmp
 /api/build/
 /api/tmp/

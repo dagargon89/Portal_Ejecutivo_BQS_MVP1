@@ -43,5 +43,23 @@ $routes->group('api/v1', ['namespace' => 'App\Controllers\Api\V1'], static funct
         // Gestion de usuarios y roles (rol admin) — RF-CTA-02
         $routes->get('admin/usuarios', 'Admin\UsuariosController::index');
         $routes->put('admin/usuarios/(:num)/roles', 'Admin\UsuariosController::updateRoles/$1');
+
+        // --- Sprint 2: Tier 0 ---
+        // Clientes (lectura abierta; escritura solo admin via Policy) — RF-CLI
+        $routes->get('clientes', 'Clientes\ClienteController::index');
+        $routes->post('clientes', 'Clientes\ClienteController::create');
+        $routes->get('clientes/(:segment)', 'Clientes\ClienteController::show/$1');
+        $routes->put('clientes/(:segment)', 'Clientes\ClienteController::update/$1');
+        $routes->delete('clientes/(:segment)', 'Clientes\ClienteController::delete/$1');
+
+        // Cotizaciones (escritura facturacion/admin via Policy) — RF-COT
+        $routes->get('cotizaciones', 'Cotizaciones\CotizacionController::index');
+        $routes->post('cotizaciones', 'Cotizaciones\CotizacionController::create');
+        $routes->get('cotizaciones/(:segment)', 'Cotizaciones\CotizacionController::show/$1');
+        $routes->put('cotizaciones/(:segment)', 'Cotizaciones\CotizacionController::update/$1');
+
+        // Importacion inicial asincrona (rol admin) — RF-ADM-02
+        $routes->post('admin/import', 'Admin\ImportController::create');
+        $routes->get('admin/jobs/(:num)', 'Admin\ImportController::jobShow/$1');
     });
 });

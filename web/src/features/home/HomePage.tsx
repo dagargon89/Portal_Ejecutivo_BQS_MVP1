@@ -45,16 +45,50 @@ export function HomePage() {
           </div>
         </div>
 
+        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Link
+            to="/clientes"
+            className="block rounded-lg bg-white p-6 shadow-sm transition-shadow hover:shadow-md"
+          >
+            <h2 className="font-semibold text-slate-900">Clientes</h2>
+            <p className="mt-1 text-sm text-slate-600">
+              Cartera consolidada del Tier 0: un solo ID por cliente, con sus cotizaciones y saldo.
+            </p>
+            <span className="mt-3 inline-block text-sm font-medium text-primary">Abrir clientes →</span>
+          </Link>
+
+          <Link
+            to="/cotizaciones"
+            className="block rounded-lg bg-white p-6 shadow-sm transition-shadow hover:shadow-md"
+          >
+            <h2 className="font-semibold text-slate-900">Cotizaciones</h2>
+            <p className="mt-1 text-sm text-slate-600">
+              Montos autorizados por cliente y su consumo (devengado vs autorizado).
+            </p>
+            <span className="mt-3 inline-block text-sm font-medium text-primary">Abrir cotizaciones →</span>
+          </Link>
+        </div>
+
         {esAdmin && (
           <div className="mt-6 rounded-lg bg-white p-6 shadow-sm">
             <h2 className="font-semibold text-slate-900">Administración</h2>
-            <p className="mt-1 text-sm text-slate-600">Gestiona los correos autorizados a acceder al portal.</p>
-            <Link
-              to="/admin/whitelist"
-              className="mt-3 inline-block rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-hover"
-            >
-              Gestionar whitelist
-            </Link>
+            <p className="mt-1 text-sm text-slate-600">
+              Gestiona los correos autorizados e importa el padrón inicial de clientes y cotizaciones.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Link
+                to="/admin/whitelist"
+                className="inline-block rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-hover"
+              >
+                Gestionar whitelist
+              </Link>
+              <Link
+                to="/admin/import"
+                className="inline-block rounded-md border border-primary px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-primary-soft"
+              >
+                Importación inicial
+              </Link>
+            </div>
           </div>
         )}
 

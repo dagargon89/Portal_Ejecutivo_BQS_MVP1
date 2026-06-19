@@ -32,7 +32,7 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
-          extensions: intl, mbstring, mysqli, pdo_mysql, json, tokenizer
+          extensions: intl, mbstring, mysqli, pdo_mysql, json, tokenizer, zip, gd
           coverage: none
 
       - name: Validate composer.json
@@ -51,9 +51,14 @@ jobs:
         run: |
           cp env .env
           {
-            echo "CI_ENVIRONMENT = testing"
+            # development (no 'testing'): los comandos spark de abajo se
+            # bootstrapean fuera de PHPUnit y 'testing' referencia SUPPORTPATH,
+            # que solo define el bootstrap de pruebas. PHPUnit fuerza 'testing'
+            # por su cuenta (system/Test/bootstrap.php), asi que las pruebas
+            # siguen corriendo contra la BD de tests.
+            echo "CI_ENVIRONMENT = development"
             echo "database.default.hostname = 127.0.0.1"
-            echo "database.default.database = bqs_test"
+            echo "database.default.database = bqs"
             echo "database.default.username = root"
             echo "database.default.password = root"
             echo "database.default.DBDriver = MySQLi"
@@ -63,10 +68,24 @@ jobs:
             echo "database.tests.username = root"
             echo "database.tests.password = root"
             echo "database.tests.DBDriver = MySQLi"
+            # Anula el prefijo 'db_' por defecto del grupo tests (Config\Database):
+            # las migraciones usan DDL verbatim sin prefijo, asi que los modelos
+            # y tableExists deben consultar sin prefijo (igual que el .env local).
+            echo "database.tests.DBPrefix ="
             echo "database.tests.port = 3306"
+            echo "database.tests.charset = utf8mb4"
+            echo "database.tests.DBCollat = utf8mb4_0900_ai_ci"
             echo "bqs.seed.ericPassword = Bqs.Dev.2026!"
           } >> .env
           php spark key:generate
+
+      # El grupo 'default' (spark migrate/seed) usa la BD `bqs`; PHPUnit usa el
+      # grupo 'tests' -> `bqs_test` (Config\Database fija defaultGroup=tests en
+      # testing). Deben ser BD distintas: si comparten BD, el migrate del grupo
+      # default deja tablas que el refresh del grupo tests no rastrea y choca
+      # ("Table already exists"). El servicio MySQL solo crea `bqs_test`.
+      - name: Create app database (grupo default)
+        run: mysql -h 127.0.0.1 -P 3306 -uroot -proot -e "CREATE DATABASE IF NOT EXISTS bqs CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;"
 
       - name: Migrate schema (hito Sprint 0 — el esquema aplica sin error)
         run: php spark migrate --all
