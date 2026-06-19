@@ -23,7 +23,7 @@ final class MigrationsSmokeTest extends CIUnitTestCase
     public function testTablasDeDominioYSoporteExisten(): void
     {
         $db = db_connect();
-        $tablas = ['CAT_CLIENTES', 'COTIZACIONES', 'BITACORA_SORTEO', 'FACTURAS', 'PAGOS', 'AUTH_WHITELIST', 'AUDITORIA', 'JOBS_COLA'];
+        $tablas = ['CAT_CLIENTES', 'COTIZACIONES', 'BITACORA_SORTEO', 'FACTURAS', 'PAGOS', 'AUTH_WHITELIST', 'AUDITORIA', 'JOBS_COLA', 'CLIENTE_ALIAS'];
 
         foreach ($tablas as $tabla) {
             $this->assertTrue($db->tableExists($tabla), "Falta la tabla: {$tabla}");

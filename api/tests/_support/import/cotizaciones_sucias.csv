@@ -1,0 +1,4 @@
+ID_Cotizacion,Cliente,PO_Referencia,Monto_Autorizado,Piezas_Autorizadas,Estatus
+COT-0010,NIDEC Mobility,PO-900,N/A,1000,Aprobada
+COT-0011,Nidec México,PO-901,-5000,1000,Aprobada
+COT-0012,Empresa Fantasma,PO-902,12345,500,Aprobada
