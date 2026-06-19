@@ -68,7 +68,13 @@ jobs:
             echo "database.tests.username = root"
             echo "database.tests.password = root"
             echo "database.tests.DBDriver = MySQLi"
+            # Anula el prefijo 'db_' por defecto del grupo tests (Config\Database):
+            # las migraciones usan DDL verbatim sin prefijo, asi que los modelos
+            # y tableExists deben consultar sin prefijo (igual que el .env local).
+            echo "database.tests.DBPrefix ="
             echo "database.tests.port = 3306"
+            echo "database.tests.charset = utf8mb4"
+            echo "database.tests.DBCollat = utf8mb4_0900_ai_ci"
             echo "bqs.seed.ericPassword = Bqs.Dev.2026!"
           } >> .env
           php spark key:generate
