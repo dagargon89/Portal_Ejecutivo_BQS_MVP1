@@ -1,0 +1,32 @@
+# Portal Ejecutivo BQS — MVP1 · entorno de desarrollo local
+# MySQL 8 reproducible, alineado al motor de producción (Site5).
+# NO contiene credenciales reales del documento fuente: son credenciales
+# exclusivas para desarrollo local. Las de producción viven solo en .env (Site5).
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: bqs_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: dev_root_pwd
+      MYSQL_DATABASE: bqs
+      MYSQL_USER: bqs_app
+      MYSQL_PASSWORD: dev_app_pwd
+      TZ: America/Ojinaga
+    command:
+      - --default-authentication-plugin=caching_sha2_password
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_ai_ci
+    ports:
+      - "3306:3306"
+    volumes:
+      - bqs_mysql_data:/var/lib/mysql
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-pdev_root_pwd"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  bqs_mysql_data:

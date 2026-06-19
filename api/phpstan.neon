@@ -1,0 +1,23 @@
+includes:
+    - vendor/codeigniter/phpstan-codeigniter/extension.neon
+
+parameters:
+    phpVersion: 80200
+    level: 8
+    paths:
+        - app
+    bootstrapFiles:
+        - vendor/codeigniter4/framework/system/Test/bootstrap.php
+    tmpDir: build/phpstan
+    codeigniter:
+        # Inferencia de esquema desactivada: las migraciones usan DDL MySQL
+        # verbatim (CHECK, collation 0900_ai_ci) que no corre sobre el SQLite
+        # temporal del extension. El analisis no requiere materializar tablas.
+        checkArgumentTypeOfModel: false
+        checkArgumentTypeOfFactories: false
+    excludePaths:
+        - app/Views/errors/*
+        # Configs generados por `shield:setup` (scaffolding de vendor, no codigo propio).
+        - app/Config/Auth.php
+        - app/Config/AuthGroups.php
+        - app/Config/AuthToken.php

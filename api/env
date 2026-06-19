@@ -1,0 +1,117 @@
+#--------------------------------------------------------------------
+# Example Environment Configuration file
+#
+# This file can be used as a starting point for your own
+# custom .env files, and contains most of the possible settings
+# available in a default install.
+#
+# By default, all of the settings are commented out. If you want
+# to override the setting, you must un-comment it by removing the '#'
+# at the beginning of the line.
+#--------------------------------------------------------------------
+
+#--------------------------------------------------------------------
+# ENVIRONMENT
+#--------------------------------------------------------------------
+
+# CI_ENVIRONMENT = production
+
+#--------------------------------------------------------------------
+# APP
+#--------------------------------------------------------------------
+
+# app.baseURL = ''
+# If you have trouble with `.`, you could also use `_`.
+# app_baseURL = ''
+# app.forceGlobalSecureRequests = false
+# app.CSPEnabled = false
+
+#--------------------------------------------------------------------
+# DATABASE
+#--------------------------------------------------------------------
+
+# database.default.hostname = localhost
+# database.default.database = ci4
+# database.default.username = root
+# database.default.password = root
+# database.default.DBDriver = MySQLi
+# database.default.DBPrefix =
+# database.default.port = 3306
+
+# If you use MySQLi as tests, first update the values of Config\Database::$tests.
+# database.tests.hostname = localhost
+# database.tests.database = ci4_test
+# database.tests.username = root
+# database.tests.password = root
+# database.tests.DBDriver = MySQLi
+# database.tests.DBPrefix =
+# database.tests.charset = utf8mb4
+# database.tests.DBCollat = utf8mb4_general_ci
+# database.tests.port = 3306
+
+#--------------------------------------------------------------------
+# ENCRYPTION
+#--------------------------------------------------------------------
+
+# encryption.key =
+
+#--------------------------------------------------------------------
+# SESSION
+#--------------------------------------------------------------------
+
+# session.driver = 'CodeIgniter\Session\Handlers\FileHandler'
+# session.savePath = null
+
+#--------------------------------------------------------------------
+# LOGGER
+#--------------------------------------------------------------------
+
+# logger.threshold = 4
+
+#--------------------------------------------------------------------
+# PORTAL EJECUTIVO BQS — variables del proyecto
+# Plantilla SIN secretos. Copiar a `.env` y completar valores reales.
+# Las credenciales reales (MySQL/Site5) viven SOLO en `.env` (gitignored),
+# nunca aqui ni en el codigo (Plan de Seguridad 04 §4.1, mejora M-01).
+#--------------------------------------------------------------------
+
+# CI_ENVIRONMENT = development
+
+# app.baseURL = 'http://localhost:8080/'
+
+# --- Base de datos MySQL 8 ---
+# database.default.hostname = 127.0.0.1
+# database.default.database = bqs
+# database.default.username = bqs_app
+# database.default.password =
+# database.default.DBDriver = MySQLi
+# database.default.port = 3306
+# database.default.charset = utf8mb4
+# database.default.DBCollat = utf8mb4_0900_ai_ci
+
+# Conexion usada por la suite de pruebas (PHPUnit)
+# database.tests.hostname = 127.0.0.1
+# database.tests.database = bqs_test
+# database.tests.username = bqs_app
+# database.tests.password =
+# database.tests.DBDriver = MySQLi
+# database.tests.port = 3306
+# database.tests.charset = utf8mb4
+# database.tests.DBCollat = utf8mb4_0900_ai_ci
+
+# --- Autenticacion (ADR-003) ---
+# Vida del access token Bearer en segundos (900 = 15 min).
+# bqs.token.accessTTL = 900
+# Vida del refresh token en cookie HttpOnly (2592000 = 30 dias).
+# bqs.token.refreshTTL = 2592000
+# En produccion (HTTPS) DEBE ser true para emitir cookies Secure.
+# bqs.cookie.secure = false
+# CORS: origenes permitidos para la SPA en desarrollo (coma-separados).
+# En produccion la SPA y la API comparten origen (Apache).
+# bqs.cors.allowedOrigins = http://localhost:5173
+
+# --- Seed (SOLO dev/staging; en produccion no se crean usuarios) ---
+# Correo semilla de la whitelist (Direccion General).
+# bqs.seed.ericEmail = eric@bestqualitysolutions.com
+# Contrasena del usuario semilla en dev (NO usar en produccion).
+# bqs.seed.ericPassword =
