@@ -35,15 +35,20 @@ export interface ApiErrorEnvelope {
   error: ApiError
 }
 
-/** Known backend error codes used by the auth + admin flows. */
+/** Known backend error codes (05-api §3). */
 export type ApiErrorCode =
   | 'BAD_CREDENTIALS'
   | 'NOT_WHITELISTED'
+  | 'TOKEN_INVALID'
+  | 'TOKEN_EXPIRED'
   | 'RATE_LIMITED'
   | 'CONFLICT'
   | 'VALIDATION'
   | 'UNAUTHORIZED'
   | 'FORBIDDEN'
+  | 'READ_ONLY'
+  | 'NOT_FOUND'
+  | 'SERVER_ERROR'
 
 /** Roles defined in the system. */
 export type Rol = 'direccion' | 'capturista' | 'facturacion' | 'admin'
@@ -84,4 +89,99 @@ export interface WhitelistEntry {
   correo: string
   activo: boolean
   creado_en: string
+}
+
+// =====================================================================
+// Sprint 2 — Tier 0 (clientes, cotizaciones, importacion)
+// La API serializa los numericos de BD como strings; se formatean en UI.
+// =====================================================================
+
+export type EstatusCliente = 'Activo' | 'Inactivo'
+export type EstatusCotizacion = 'Aprobada' | 'Pendiente PO' | 'Cerrada'
+
+/** Cliente consolidado del Tier 0 (CAT_CLIENTES). */
+export interface Cliente {
+  ID_Cliente: string
+  Nombre_Fiscal: string
+  Nombre_Comercial: string | null
+  RFC: string | null
+  Estatus: EstatusCliente
+}
+
+/** Cotizacion del Tier 0 (COTIZACIONES). */
+export interface Cotizacion {
+  ID_Cotizacion: string
+  ID_Cliente: string
+  PO_Referencia: string | null
+  Monto_Autorizado: string
+  Piezas_Autorizadas: string | null
+  Estatus: EstatusCotizacion
+}
+
+/** Fila de cotizacion dentro de la cartera (incluye devengado/disponible). */
+export interface CarteraCotizacion {
+  ID_Cotizacion: string
+  PO_Referencia: string | null
+  Monto_Autorizado: string
+  Piezas_Autorizadas: string | null
+  Estatus: string
+  devengado: string
+  disponible: string
+}
+
+/** Fila de factura dentro de la cartera (vacia hasta el Sprint 3). */
+export interface CarteraFactura {
+  Folio_Factura: string
+  Fecha_Emision: string
+  Monto_Total: string
+  Fecha_Vencimiento: string
+  Estatus_Pago: string
+  pagado: string
+  saldo: string
+}
+
+/** Cartera consolidada del cliente (RF-CLI-03). */
+export interface Cartera {
+  moneda: string
+  total_autorizado: string
+  saldo_por_cobrar: string
+  cotizaciones: CarteraCotizacion[]
+  facturas: CarteraFactura[]
+}
+
+/** Detalle de cliente con su cartera (GET /clientes/{id}). */
+export type ClienteConCartera = Cliente & { cartera: Cartera }
+
+/** Consumo devengado vs autorizado de una cotizacion (RF-COT-02). */
+export interface Consumo {
+  moneda: string
+  devengado_acumulado: string
+  devengado_pendiente: string
+  devengado_facturado: string
+  disponible: string
+}
+
+/** Detalle de cotizacion con su consumo (GET /cotizaciones/{id}). */
+export type CotizacionConConsumo = Cotizacion & { consumo: Consumo }
+
+export type EstadoJob = 'pendiente' | 'procesando' | 'completado' | 'fallido'
+
+/** Estado de un job de la cola asincrona (GET /admin/jobs/{id}). */
+export interface Job {
+  id: number
+  tipo: string
+  estado: EstadoJob
+  intentos: number
+  max_intentos: number
+  ultimo_error: string | null
+  creado_en: string
+  actualizado_en: string
+}
+
+/** Respuesta 202 al encolar una importacion (POST /admin/import). */
+export interface ImportEncolado {
+  job_id: number
+  tipo: string
+  estado: string
+  message: string
 }

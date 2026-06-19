@@ -5,6 +5,11 @@ import { LoginPage } from './features/auth/LoginPage'
 import { AccessDeniedPage } from './features/auth/AccessDeniedPage'
 import { HomePage } from './features/home/HomePage'
 import { WhitelistPage } from './features/admin/whitelist/WhitelistPage'
+import { ClientesPage } from './features/clientes/ClientesPage'
+import { ClienteDetallePage } from './features/clientes/ClienteDetallePage'
+import { CotizacionesPage } from './features/cotizaciones/CotizacionesPage'
+import { CotizacionDetallePage } from './features/cotizaciones/CotizacionDetallePage'
+import { ImportPage } from './features/admin/import/ImportPage'
 
 function App() {
   return (
@@ -22,10 +27,50 @@ function App() {
             }
           />
           <Route
+            path="/clientes"
+            element={
+              <ProtectedRoute>
+                <ClientesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/clientes/:id"
+            element={
+              <ProtectedRoute>
+                <ClienteDetallePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/cotizaciones"
+            element={
+              <ProtectedRoute>
+                <CotizacionesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/cotizaciones/:id"
+            element={
+              <ProtectedRoute>
+                <CotizacionDetallePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/admin/whitelist"
             element={
               <ProtectedRoute rol="admin">
                 <WhitelistPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/import"
+            element={
+              <ProtectedRoute rol="admin">
+                <ImportPage />
               </ProtectedRoute>
             }
           />
