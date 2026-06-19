@@ -32,7 +32,7 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
-          extensions: intl, mbstring, mysqli, pdo_mysql, json, tokenizer
+          extensions: intl, mbstring, mysqli, pdo_mysql, json, tokenizer, zip, gd
           coverage: none
 
       - name: Validate composer.json
