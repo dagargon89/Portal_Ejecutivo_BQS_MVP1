@@ -35,6 +35,13 @@ $routes->group('api/v1', ['namespace' => 'App\Controllers\Api\V1'], static funct
 
     // --- Rutas de datos/negocio (autenticado + readonly para direccion) ---
     $routes->group('', ['filter' => ['tokens', 'whitelist', 'readonly']], static function (RouteCollection $routes): void {
+        // --- Sprint 4: Dashboard ejecutivo (las 3 preguntas) ---
+        // Solo GET; el calculo ocurre en servidor (RF-DASH-04). El acceso por
+        // rol (direccion/facturacion/admin) lo aplica DashboardPolicy.
+        $routes->get('dashboard/resumen', 'Dashboard\DashboardController::resumen');
+        $routes->get('dashboard/por-facturar', 'Dashboard\DashboardController::porFacturar');
+        $routes->get('dashboard/por-cobrar', 'Dashboard\DashboardController::porCobrar');
+
         // CRUD de whitelist (rol admin) — RF-CTA-01
         $routes->get('admin/whitelist', 'Admin\WhitelistController::index');
         $routes->post('admin/whitelist', 'Admin\WhitelistController::create');
