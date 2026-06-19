@@ -48,6 +48,8 @@ export type ApiErrorCode =
   | 'FORBIDDEN'
   | 'READ_ONLY'
   | 'NOT_FOUND'
+  | 'OVERPAYMENT'
+  | 'ILLEGAL_TRANSITION'
   | 'SERVER_ERROR'
 
 /** Roles defined in the system. */
@@ -184,4 +186,68 @@ export interface ImportEncolado {
   tipo: string
   estado: string
   message: string
+}
+
+// =====================================================================
+// Sprint 3 — Ciclo de Cobro (devengado, facturas, pagos)
+// Numericos como strings (DECIMAL serializado); se formatean en UI.
+// =====================================================================
+
+export type EstatusFacturacion = 'Pendiente' | 'Facturado'
+export type EstatusFactura = 'Vigente' | 'Vencida' | 'Pagada'
+
+/** Captura de devengado (BITACORA_SORTEO). */
+export interface Devengado {
+  ID_Captura: string
+  Fecha: string
+  ID_Cotizacion: string
+  Horas_Trabajadas: string
+  Piezas_Sorteadas: string | null
+  Monto_Devengado: string
+  Estatus_Facturacion: EstatusFacturacion
+}
+
+/** Factura (FACTURAS). */
+export interface Factura {
+  Folio_Factura: string
+  ID_Cliente: string
+  Fecha_Emision: string
+  Monto_Subtotal: string
+  Monto_Total: string
+  Fecha_Vencimiento: string
+  Estatus_Pago: EstatusFactura
+}
+
+/** Abono aplicado a una factura (PAGOS). */
+export interface Pago {
+  ID_Pago: string
+  Fecha_Pago: string
+  Monto_Pagado: string
+  Referencia: string | null
+}
+
+/** Detalle de factura con saldo y pagos (GET /facturas/{folio}). */
+export type FacturaConDetalle = Factura & {
+  pagado: string
+  saldo: string
+  pagos: Pago[]
+}
+
+/** Resumen de factura devuelto al registrar un pago. */
+export interface PagoFacturaResumen {
+  Folio_Factura: string
+  Monto_Total: string
+  pagado: string
+  saldo: string
+  Estatus_Pago: EstatusFactura
+}
+
+/** Respuesta 201 al registrar un pago (POST /facturas/{folio}/pagos). */
+export interface PagoRegistrado {
+  ID_Pago: string
+  Folio_Factura: string
+  Fecha_Pago: string
+  Monto_Pagado: string
+  Referencia: string | null
+  factura: PagoFacturaResumen
 }

@@ -9,6 +9,9 @@ import { ClientesPage } from './features/clientes/ClientesPage'
 import { ClienteDetallePage } from './features/clientes/ClienteDetallePage'
 import { CotizacionesPage } from './features/cotizaciones/CotizacionesPage'
 import { CotizacionDetallePage } from './features/cotizaciones/CotizacionDetallePage'
+import { DevengadoPage } from './features/devengado/DevengadoPage'
+import { FacturasPage } from './features/facturas/FacturasPage'
+import { FacturaDetallePage } from './features/facturas/FacturaDetallePage'
 import { ImportPage } from './features/admin/import/ImportPage'
 
 function App() {
@@ -55,6 +58,30 @@ function App() {
             element={
               <ProtectedRoute>
                 <CotizacionDetallePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/devengado"
+            element={
+              <ProtectedRoute>
+                <DevengadoPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/facturas"
+            element={
+              <ProtectedRoute>
+                <FacturasPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/facturas/:folio"
+            element={
+              <ProtectedRoute>
+                <FacturaDetallePage />
               </ProtectedRoute>
             }
           />
