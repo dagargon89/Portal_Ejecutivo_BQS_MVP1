@@ -42,6 +42,7 @@ class Filters extends BaseFilters
         'whitelist' => \App\Filters\WhitelistFilter::class,
         'readonly' => \App\Filters\ReadOnlyFilter::class,
         'loginThrottle' => \App\Filters\LoginThrottleFilter::class,
+        'accessAudit' => \App\Filters\AccessAuditFilter::class,
     ];
 
     /**
