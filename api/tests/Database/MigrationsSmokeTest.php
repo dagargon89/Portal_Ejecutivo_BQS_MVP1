@@ -25,8 +25,10 @@ final class MigrationsSmokeTest extends CIUnitTestCase
         $db = db_connect();
         $tablas = ['CAT_CLIENTES', 'COTIZACIONES', 'BITACORA_SORTEO', 'FACTURAS', 'PAGOS', 'AUTH_WHITELIST', 'AUDITORIA', 'JOBS_COLA', 'CLIENTE_ALIAS'];
 
+        // Uncached: tras el refresh de migraciones, el cache de nombres de tabla
+        // de la conexion puede quedar obsoleto; forzamos una consulta fresca.
         foreach ($tablas as $tabla) {
-            $this->assertTrue($db->tableExists($tabla), "Falta la tabla: {$tabla}");
+            $this->assertTrue($db->tableExists($tabla, false), "Falta la tabla: {$tabla}");
         }
     }
 
@@ -35,7 +37,7 @@ final class MigrationsSmokeTest extends CIUnitTestCase
         $db = db_connect();
 
         foreach (['users', 'auth_identities', 'auth_groups_users', 'auth_logins'] as $tabla) {
-            $this->assertTrue($db->tableExists($tabla), "Falta la tabla Shield: {$tabla}");
+            $this->assertTrue($db->tableExists($tabla, false), "Falta la tabla Shield: {$tabla}");
         }
     }
 
