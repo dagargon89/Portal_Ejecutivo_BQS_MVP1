@@ -61,5 +61,19 @@ $routes->group('api/v1', ['namespace' => 'App\Controllers\Api\V1'], static funct
         // Importacion inicial asincrona (rol admin) — RF-ADM-02
         $routes->post('admin/import', 'Admin\ImportController::create');
         $routes->get('admin/jobs/(:num)', 'Admin\ImportController::jobShow/$1');
+
+        // --- Sprint 3: Ciclo de Cobro (devengado -> factura -> pago) ---
+        // Devengado por cotizacion (escritura solo capturista via Policy) — RF-DEV
+        $routes->get('cotizaciones/(:segment)/devengado', 'Cotizaciones\DevengadoController::index/$1');
+        $routes->post('cotizaciones/(:segment)/devengado', 'Cotizaciones\DevengadoController::create/$1');
+
+        // Facturas (emision facturacion/admin via Policy) — RF-FAC
+        $routes->get('facturas', 'Facturas\FacturaController::index');
+        $routes->post('facturas', 'Facturas\FacturaController::create');
+        $routes->get('facturas/(:segment)', 'Facturas\FacturaController::show/$1');
+
+        // Pagos de una factura (registro facturacion/admin via Policy) — RF-PAG
+        $routes->get('facturas/(:segment)/pagos', 'Facturas\PagoController::index/$1');
+        $routes->post('facturas/(:segment)/pagos', 'Facturas\PagoController::create/$1');
     });
 });
