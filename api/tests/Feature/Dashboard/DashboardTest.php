@@ -7,6 +7,7 @@ use App\Models\ClienteModel;
 use App\Models\CotizacionModel;
 use App\Models\FacturaModel;
 use App\Models\PagoModel;
+use CodeIgniter\Database\BaseResult;
 use Tests\Support\AuthTestCase;
 
 /**
@@ -85,6 +86,23 @@ final class DashboardTest extends AuthTestCase
 
         $this->assertHttp($resp, 200);
         $this->assertSame('100000.00', $this->jsonBody($resp)['data']['facturado_mes']);
+    }
+
+    // ---- TC-DASH-04: mes sin facturas => 0.00 (no null, no error) --------
+
+    public function testResumenSinDatosDevuelveCeroNoNulo(): void
+    {
+        // El setUp solo crea clientes y cotizaciones: no hay facturas, devengado
+        // ni pagos. Las tres cifras deben ser exactamente '0.00' (SUM nulo -> 0
+        // via number_format), nunca null ni error (TC-DASH-04, RF-DASH-01).
+        $token = $this->loginToken('eric@bestqualitysolutions.com');
+        $resp = $this->getAuth('api/v1/dashboard/resumen', $token);
+
+        $this->assertHttp($resp, 200);
+        $data = $this->jsonBody($resp)['data'];
+        $this->assertSame('0.00', $data['facturado_mes']);
+        $this->assertSame('0.00', $data['por_facturar']);
+        $this->assertSame('0.00', $data['por_cobrar']);
     }
 
     // ---- P2: por facturar (Caso QA 3) ------------------------------------
@@ -206,5 +224,80 @@ final class DashboardTest extends AuthTestCase
     public function testSinTokenDevuelve401(): void
     {
         $this->get('api/v1/dashboard/resumen')->assertStatus(401);
+    }
+
+    // ---- TC-DASH-07 / RNF-02: las agregaciones usan los indices ----------
+
+    /**
+     * Verifica que las tres consultas del dashboard tienen disponible su indice
+     * canonico (possible_keys) y que esos indices existen en el esquema, para no
+     * caer en escaneo completo (RNF-02). Se afirma la *disponibilidad* del indice,
+     * no la eleccion final (key/type), que el optimizador decide por costo y es
+     * inestable en tablas diminutas; la latencia P95 < 800 ms bajo volumen real se
+     * valida con la suite k6 del Sprint 5 (roadmap L186). EXPLAIN es especifico de
+     * MySQL: el grupo `tests` solo corre sobre MySQL (las migraciones usan DDL
+     * MySQL verbatim); si cayera en SQLite, se omite.
+     */
+    public function testConsultasDeAgregacionUsanIndices(): void
+    {
+        $db = db_connect();
+        if ($db->DBDriver !== 'MySQLi') {
+            $this->markTestSkipped('TC-DASH-07 requiere MySQL (EXPLAIN); SQLite no aplica.');
+        }
+
+        // Filas representativas para que el optimizador emita un plan normal
+        // (con tablas vacias MySQL puede "optimizar y descartar" la consulta).
+        $this->factura('F-1', '50000.00', $this->emisionEsteMes, $this->vencimientoEsteMes, 'Vigente');
+        $this->factura('F-2', '30000.00', $this->emisionEsteMes, $this->vencimientoEsteMes, 'Pagada');
+        $this->factura('F-3', '20000.00', $this->emisionEsteMes, $this->vencimientoEsteMes, 'Vencida');
+        $this->pago('PAG-1', 'F-1', '10000.00');
+        $this->devengado('BIT-1', 'COT-0001', '10000.00', 'Pendiente');
+        $this->devengado('BIT-2', 'COT-0002', '4000.00', 'Pendiente');
+
+        $fac = $db->prefixTable('FACTURAS');
+        $bit = $db->prefixTable('BITACORA_SORTEO');
+        $pag = $db->prefixTable('PAGOS');
+        $inicio = date('Y-m-01');
+        $fin = date('Y-m-t');
+
+        // Concatena possible_keys + key de todas las filas del plan.
+        $plan = function (string $sql) use ($db): string {
+            $res = $db->query($sql);
+            $rows = $res instanceof BaseResult ? $res->getResultArray() : [];
+            $hay = '';
+            foreach ($rows as $r) {
+                $hay .= ($r['possible_keys'] ?? '') . '|' . ($r['key'] ?? '') . ' ';
+            }
+
+            return $hay;
+        };
+
+        // P1 — facturado del mes (idx_fac_estatus_emision).
+        $p1 = $plan("EXPLAIN SELECT SUM(Monto_Total) AS total FROM {$fac} "
+            . "WHERE Estatus_Pago IN ('Pagada','Vigente') "
+            . "AND Fecha_Emision >= '{$inicio}' AND Fecha_Emision <= '{$fin}'");
+        $this->assertStringContainsString('idx_fac_estatus_emision', $p1, 'P1 no expone idx_fac_estatus_emision');
+
+        // P2 — por facturar (idx_bit_estatus_fact).
+        $p2 = $plan("EXPLAIN SELECT SUM(Monto_Devengado) AS total FROM {$bit} "
+            . "WHERE Estatus_Facturacion = 'Pendiente'");
+        $this->assertStringContainsString('idx_bit_estatus_fact', $p2, 'P2 no expone idx_bit_estatus_fact');
+
+        // P3 — por cobrar (idx_pag_factura en el JOIN a PAGOS).
+        $p3 = $plan("EXPLAIN SELECT f.Monto_Total, SUM(p.Monto_Pagado) AS pagado FROM {$fac} f "
+            . "LEFT JOIN {$pag} p ON p.Folio_Factura = f.Folio_Factura "
+            . "WHERE f.Estatus_Pago IN ('Vigente','Vencida') GROUP BY f.Folio_Factura, f.Monto_Total");
+        $this->assertStringContainsString('idx_pag_factura', $p3, 'P3 no expone idx_pag_factura');
+
+        // Los tres indices canonicos existen en el esquema.
+        $indices = static function (string $tabla) use ($db): array {
+            $res = $db->query("SHOW INDEX FROM {$tabla}");
+            $rows = $res instanceof BaseResult ? $res->getResultArray() : [];
+
+            return array_column($rows, 'Key_name');
+        };
+        $this->assertContains('idx_fac_estatus_emision', $indices($fac));
+        $this->assertContains('idx_bit_estatus_fact', $indices($bit));
+        $this->assertContains('idx_pag_factura', $indices($pag));
     }
 }
