@@ -10,6 +10,7 @@ export function HomePage() {
 
   const esAdmin = usuario.roles.includes('admin')
   const puedeCapturar = usuario.roles.includes('capturista') || esAdmin
+  const puedeVerDashboard = usuario.roles.some((r) => r === 'direccion' || r === 'facturacion' || r === 'admin')
 
   return (
     <main className="min-h-screen bg-slate-50">
@@ -45,6 +46,23 @@ export function HomePage() {
             )}
           </div>
         </div>
+
+        {puedeVerDashboard && (
+          <Link
+            to="/dashboard"
+            className="mt-6 flex items-center justify-between rounded-lg bg-primary p-6 text-white shadow-sm transition-colors hover:bg-primary-hover"
+          >
+            <div>
+              <h2 className="text-lg font-bold">Dashboard ejecutivo</h2>
+              <p className="mt-1 text-sm text-white/80">
+                Las tres preguntas: qué se facturó, qué falta por facturar y cuánto te deben.
+              </p>
+            </div>
+            <span aria-hidden className="ml-4 text-2xl">
+              →
+            </span>
+          </Link>
+        )}
 
         <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Link
@@ -117,9 +135,6 @@ export function HomePage() {
           </div>
         )}
 
-        <p className="mt-6 text-sm text-slate-400">
-          El dashboard de las tres preguntas se habilita en un sprint posterior.
-        </p>
       </section>
     </main>
   )

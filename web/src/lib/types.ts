@@ -251,3 +251,62 @@ export interface PagoRegistrado {
   Referencia: string | null
   factura: PagoFacturaResumen
 }
+
+// =====================================================================
+// Sprint 4 — Dashboard ejecutivo (las 3 preguntas)
+// Numericos como strings (DECIMAL serializado); se formatean en UI.
+// =====================================================================
+
+/** Resumen ejecutivo: las 3 cifras (GET /dashboard/resumen). */
+export interface ResumenEjecutivo {
+  periodo: string
+  moneda: string
+  facturado_mes: string
+  por_facturar: string
+  por_cobrar: string
+  calculado_en: string
+}
+
+/** Fila del desglose "por facturar", agrupada por cotizacion (RF-DASH-02). */
+export interface PorFacturarItem {
+  ID_Cotizacion: string
+  ID_Cliente: string
+  Nombre_Comercial: string | null
+  PO_Referencia: string | null
+  Monto_Autorizado: string | null
+  monto_devengado_pendiente: string
+  capturas: number
+}
+
+/** Desglose del devengado pendiente (GET /dashboard/por-facturar). */
+export interface PorFacturar {
+  total_por_facturar: string
+  moneda: string
+  desglose: PorFacturarItem[]
+}
+
+/** Factura activa dentro del desglose "por cobrar". */
+export interface PorCobrarFactura {
+  Folio_Factura: string
+  Fecha_Emision: string
+  Fecha_Vencimiento: string
+  Estatus_Pago: string
+  Monto_Total: string
+  pagado: string
+  saldo: string
+}
+
+/** Cliente con sus facturas activas y saldo (RF-DASH-03, RF-MET-02). */
+export interface PorCobrarCliente {
+  ID_Cliente: string
+  Nombre_Comercial: string | null
+  saldo_cliente: string
+  facturas: PorCobrarFactura[]
+}
+
+/** Desglose del saldo por cobrar (GET /dashboard/por-cobrar). */
+export interface PorCobrar {
+  total_por_cobrar: string
+  moneda: string
+  clientes: PorCobrarCliente[]
+}

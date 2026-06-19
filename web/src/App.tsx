@@ -4,6 +4,7 @@ import { ProtectedRoute } from './components/ProtectedRoute'
 import { LoginPage } from './features/auth/LoginPage'
 import { AccessDeniedPage } from './features/auth/AccessDeniedPage'
 import { HomePage } from './features/home/HomePage'
+import { DashboardPage } from './features/dashboard/DashboardPage'
 import { WhitelistPage } from './features/admin/whitelist/WhitelistPage'
 import { ClientesPage } from './features/clientes/ClientesPage'
 import { ClienteDetallePage } from './features/clientes/ClienteDetallePage'
@@ -26,6 +27,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <HomePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <DashboardPage />
               </ProtectedRoute>
             }
           />
