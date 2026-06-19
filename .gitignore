@@ -1,0 +1,45 @@
+# =====================================================================
+# Portal Ejecutivo BQS — MVP1 · .gitignore (monorepo)
+# Ningun secreto se versiona (CLAUDE.md, Plan de Seguridad 04 §4.1).
+# =====================================================================
+
+# --- Secretos / entorno (NUNCA versionar) ---
+.env
+*.env
+!api/env            # SI se versiona la PLANTILLA (sin secretos)
+.env.local
+.env.*.local
+
+# --- Backend CodeIgniter 4 (/api) ---
+/api/vendor/
+/api/writable/cache/*
+/api/writable/logs/*
+/api/writable/session/*
+/api/writable/debugbar/*
+/api/writable/uploads/*
+!/api/writable/**/index.html
+/api/php_errors.log
+/api/builds
+/api/.phpunit.cache/
+/api/phpstan-baseline.neon.tmp
+/api/build/
+/api/tmp/
+
+# --- Frontend React/Vite (/web) ---
+/web/node_modules/
+/web/dist/
+/web/.vite/
+/web/coverage/
+/web/*.local
+
+# --- Infra / herramientas ---
+/docker/mysql/data/
+.phpunit.result.cache
+/coverage/
+
+# --- Sistema operativo / editores ---
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/

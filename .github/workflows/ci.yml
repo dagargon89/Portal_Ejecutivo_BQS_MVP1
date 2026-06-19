@@ -1,0 +1,120 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+jobs:
+  api:
+    name: API (CodeIgniter 4 · PHP 8.2 · MySQL 8)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: api
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: bqs_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -uroot -proot"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP 8.2
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: intl, mbstring, mysqli, pdo_mysql, json, tokenizer
+          coverage: none
+
+      - name: Validate composer.json
+        run: composer validate --strict
+
+      - name: Cache Composer packages
+        uses: actions/cache@v4
+        with:
+          path: api/vendor
+          key: composer-${{ hashFiles('api/composer.lock') }}
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Configure environment (.env de CI, sin secretos reales)
+        run: |
+          cp env .env
+          {
+            echo "CI_ENVIRONMENT = testing"
+            echo "database.default.hostname = 127.0.0.1"
+            echo "database.default.database = bqs_test"
+            echo "database.default.username = root"
+            echo "database.default.password = root"
+            echo "database.default.DBDriver = MySQLi"
+            echo "database.default.port = 3306"
+            echo "database.tests.hostname = 127.0.0.1"
+            echo "database.tests.database = bqs_test"
+            echo "database.tests.username = root"
+            echo "database.tests.password = root"
+            echo "database.tests.DBDriver = MySQLi"
+            echo "database.tests.port = 3306"
+            echo "bqs.seed.ericPassword = Bqs.Dev.2026!"
+          } >> .env
+          php spark key:generate
+
+      - name: Migrate schema (hito Sprint 0 — el esquema aplica sin error)
+        run: php spark migrate --all
+
+      - name: Seed
+        run: php spark db:seed InitialSeeder
+
+      - name: PHPStan (nivel 8)
+        run: composer analyse
+
+      - name: PHP-CS-Fixer (estilo)
+        run: composer cs-check
+
+      - name: Dependencias sin vulnerabilidades
+        run: composer audit
+
+      - name: PHPUnit (esquema + auth/RBAC)
+        run: vendor/bin/phpunit --no-coverage
+
+  web:
+    name: Web (React 19 · Vite · TypeScript)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck (cero errores)
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+      - name: Auditoria de dependencias (alto/critico)
+        run: npm audit --audit-level=high
+        continue-on-error: true
