@@ -9,6 +9,7 @@ export function HomePage() {
   }
 
   const esAdmin = usuario.roles.includes('admin')
+  const puedeCapturar = usuario.roles.includes('capturista') || esAdmin
 
   return (
     <main className="min-h-screen bg-slate-50">
@@ -66,6 +67,30 @@ export function HomePage() {
               Montos autorizados por cliente y su consumo (devengado vs autorizado).
             </p>
             <span className="mt-3 inline-block text-sm font-medium text-primary">Abrir cotizaciones →</span>
+          </Link>
+
+          {puedeCapturar && (
+            <Link
+              to="/devengado"
+              className="block rounded-lg bg-white p-6 shadow-sm transition-shadow hover:shadow-md"
+            >
+              <h2 className="font-semibold text-slate-900">Captura de devengado</h2>
+              <p className="mt-1 text-sm text-slate-600">
+                Registra el trabajo ejecutado (sorteo) por cotización; nace pendiente por facturar.
+              </p>
+              <span className="mt-3 inline-block text-sm font-medium text-primary">Capturar devengado →</span>
+            </Link>
+          )}
+
+          <Link
+            to="/facturas"
+            className="block rounded-lg bg-white p-6 shadow-sm transition-shadow hover:shadow-md"
+          >
+            <h2 className="font-semibold text-slate-900">Facturas y cobranza</h2>
+            <p className="mt-1 text-sm text-slate-600">
+              Emisión desde devengado, saldos por cobrar y registro de pagos (ciclo de cobro).
+            </p>
+            <span className="mt-3 inline-block text-sm font-medium text-primary">Abrir facturas →</span>
           </Link>
         </div>
 
