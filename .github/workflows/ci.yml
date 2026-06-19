@@ -51,7 +51,12 @@ jobs:
         run: |
           cp env .env
           {
-            echo "CI_ENVIRONMENT = testing"
+            # development (no 'testing'): los comandos spark de abajo se
+            # bootstrapean fuera de PHPUnit y 'testing' referencia SUPPORTPATH,
+            # que solo define el bootstrap de pruebas. PHPUnit fuerza 'testing'
+            # por su cuenta (system/Test/bootstrap.php), asi que las pruebas
+            # siguen corriendo contra la BD de tests.
+            echo "CI_ENVIRONMENT = development"
             echo "database.default.hostname = 127.0.0.1"
             echo "database.default.database = bqs_test"
             echo "database.default.username = root"
