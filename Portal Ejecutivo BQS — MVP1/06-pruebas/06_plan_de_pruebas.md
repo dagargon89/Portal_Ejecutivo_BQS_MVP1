@@ -150,12 +150,14 @@ Para cada caso: **condición de entrada → resultado esperado** (código HTTP, 
 
 Estos casos verifican **exactamente** las tres fórmulas con los números de los casos QA. El cálculo ocurre en el servidor ([RF-DASH-04](../01-vision/01_SRS_especificacion_requisitos.md)); el cliente solo renderiza.
 
+> **Contrato (doc 05 §3):** los campos del resumen son `facturado_mes`, `por_facturar` y `por_cobrar`; los montos viajan como **string** DECIMAL (`number_format`, p. ej. `"100000.00"`) y el cliente solo los formatea.
+
 | Caso | Condición de entrada | Resultado esperado |
 |---|---|---|
-| **TC-DASH-01** (RF-DASH-01 · **Caso QA 2**) | `FACTURAS` con **$100,000** emitidos en el mes en curso (`Vigente`/`Pagada`) y **$50,000** el mes anterior; `GET /api/v1/dashboard/resumen`. | `facturado_del_mes` = **$100,000.00** exacto. **Excluye** los $50,000 del mes previo. |
+| **TC-DASH-01** (RF-DASH-01 · **Caso QA 2**) | `FACTURAS` con **$100,000** emitidos en el mes en curso (`Vigente`/`Pagada`) y **$50,000** el mes anterior; `GET /api/v1/dashboard/resumen`. | `facturado_mes` = **$100,000.00** exacto. **Excluye** los $50,000 del mes previo. |
 | **TC-DASH-02** (RF-DASH-02 · **Caso QA 3**) | `BITACORA_SORTEO` con un devengado de **$10,000** `Pendiente`. | `por_facturar` = **$10,000.00**, con **desglose por `ID_Cotizacion`**; un devengado `Facturado` no suma. |
 | **TC-DASH-03** (RF-DASH-03 · **Caso QA 4**) | Factura `F-9901` $50,000 (`Vigente`) con abono $20,000. | `por_cobrar` = **$30,000.00** (suma de facturas `Vigente`+`Vencida` − Σ pagos). Una factura `Pagada` no suma al por cobrar. |
-| **TC-DASH-04** (RF-DASH-01) | Mes en curso sin facturas. | `facturado_del_mes` = **$0.00** (no error, no `null`). |
+| **TC-DASH-04** (RF-DASH-01) | Mes en curso sin facturas. | `facturado_mes` = **$0.00** (no error, no `null`). |
 | **TC-DASH-05** (RF-DASH-04) | El cliente envía un payload manipulado con totales falsos en un `GET`. | La API ignora cualquier total de entrada; responde los valores **calculados en servidor**; el render oficial no cambia. |
 | **TC-DASH-06** (RF-DASH-02) | Dos cotizaciones con devengado `Pendiente` ($10,000 y $4,000). | `por_facturar` = **$14,000.00**; el desglose lista **ambas** cotizaciones con su monto. |
 | **TC-DASH-07** (RNF-02 / RF-DASH-04) | Inspección del plan de consulta de las agregaciones. | Las consultas usan los índices `idx_fac_estatus_emision`, `idx_bit_estatus_fact`, `idx_pag_factura`; sin escaneo completo de tabla. |
@@ -521,7 +523,7 @@ final class DashboardResumenTest extends CIUnitTestCase
             ->get('/api/v1/dashboard/resumen');
 
         $result->assertStatus(200);
-        $result->assertJSONFragment(['facturado_del_mes' => 100000.00]);
+        $result->assertJSONFragment(['facturado_mes' => '100000.00']);
     }
 }
 ```
@@ -554,7 +556,7 @@ import { DashboardResumen } from "@/components/DashboardResumen";
 vi.mock("@/lib/api", () => ({
   api: {
     get: vi.fn().mockResolvedValue({
-      data: { data: { facturado_del_mes: 100000, por_facturar: 10000, por_cobrar: 30000 } },
+      data: { data: { facturado_mes: '100000.00', por_facturar: '10000.00', por_cobrar: '30000.00' } },
     }),
   },
 }));
