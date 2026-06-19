@@ -49,7 +49,7 @@ php spark key:generate
 # Edita .env: conexión MySQL + bqs.seed.ericPassword (dev)
 php spark migrate --all          # tablas de dominio/soporte (incl. CLIENTE_ALIAS) + Shield
 php spark db:seed InitialSeeder  # whitelist semilla + usuarios dev por rol
-php spark db:seed DemoTier0Seeder # (opcional, dev) datos de demo del Caso QA 1
+php spark db:seed DemoDataSeeder # (opcional, dev) datos de demo coherentes para toda la app
 php spark serve                  # http://localhost:8080
 ```
 
@@ -67,9 +67,13 @@ En staging/producción se programa por cron cada ~5 min:
 */5 * * * * cd /ruta/api && php spark bqs:process-queue >> writable/logs/queue.log 2>&1
 ```
 
-`DemoTier0Seeder` siembra el **Caso QA 1** ya consolidado (solo dev/staging):
-`NIDEC Mobility` + `Nidec México` → un único **CLI-001** con cartera sumada de
-**$250,000** (vía catálogo de alias `CLIENTE_ALIAS`, M-08). No se usa en pruebas.
+`DemoDataSeeder` siembra datos **coherentes** de toda la app (solo dev/staging,
+no se usa en pruebas): 8 clientes con alias, 13 cotizaciones, devengado
+(`BITACORA_SORTEO`), 7 facturas y 4 pagos, con cifras consistentes (devengado ≤
+autorizado, IVA 16%, pagos ≤ total, vencidas/vigentes por fecha). Incluye el
+**Caso QA 1**: `NIDEC Mobility` + `Nidec México` → un único **CLI-001** con
+cartera de **$250,000** (catálogo de alias `CLIENTE_ALIAS`, M-08).
+**Resetea** las tablas de dominio al ejecutarse.
 
 **Hito Sprint 0:** los comandos anteriores corren sin errores y el esquema
 queda creado (8 tablas + Shield, con `CHECK`, índices y collation `utf8mb4_0900_ai_ci`).
