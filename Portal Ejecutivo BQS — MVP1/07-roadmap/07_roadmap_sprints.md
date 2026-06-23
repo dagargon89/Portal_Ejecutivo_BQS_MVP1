@@ -93,6 +93,23 @@ El calendario está fijado por los hitos contractuales del SOW Dataholics–BQS 
 
 ---
 
+### Sprint D — Demo UI/UX (validación con `db.json` espejo)
+
+> **Nuevo sprint de la [Metodología Demo-First v2](../../Metodología%20Demo-First/METODOLOGIA_DEMO_FIRST_v2.md).** Se ejecuta tras los cimientos (Sprint 0) y **antes** de construir el backend de negocio. El código del proyecto **empieza aquí**: un frontend real que consume un `db.json` espejo del DDL detrás de `lib/api.ts`, para validar la UX y **congelar los contratos del API** antes de gastar esfuerzo en backend.
+
+**Objetivo:** un prototipo navegable que cubra **todo el sistema** (las 3 preguntas + ciclo de cobro + clientes/cotizaciones + whitelist/auditoría) desde la perspectiva del administrador, con mejores prácticas UI/UX (estados completos, WCAG 2.1 AA, responsive), validado con el stakeholder.
+
+- Generar la guía [`demo-ux/09_demo_ux_guia.md`](../demo-ux/09_demo_ux_guia.md): inventario de pantallas (pantalla → RF → ruta → rol), mapa de navegación, catálogo de estados por componente, espejo de datos, accesibilidad, responsive y protocolo de validación.
+- Construir el scaffold [`demo-ux/app/`](../demo-ux/app/): React 19 + Vite 6 + TypeScript + **Tailwind 4** con los tokens del [Design System (08)](../01-vision/08_identidad_visual_design_system.md); panel administrativo (nav lateral + barra superior) propio.
+- Implementar la **capa de datos espejo**: `lib/types.ts` (espejo del [03](../03-datos/03_modelo_de_datos.md)), `lib/api.ts` (contrato = endpoints del [05](../05-api/05_especificacion_api.md)), `lib/api.mock.ts` (lee `db.json` y calcula las 3 preguntas como el servidor) y `lib/mock/db.json` (espejo exacto del DDL con datos ficticios sin PII).
+- Cubrir los **5 Casos QA** a nivel de UX: consolidación de clientes (QA1), facturado del mes (QA2), por facturar (QA3), saldo neto de abonos (QA4) y bloqueo de whitelist (QA5).
+- **Definición de Hecho** (Demo-First v2 §7): cada flujo con su pantalla; cada componente con estados default/hover/focus/disabled/loading/**empty/error**; navegación por teclado y foco visible; color AA y estado nunca solo por color; responsive a 360 px; las pantallas nunca leen `db.json` directo; `typecheck`/`lint` verdes.
+- **Validación con stakeholder** y **bitácora hallazgos → cambios**; al cierre, **re-sincronizar** SRS (01) y API (05) y marcar el contrato de `lib/api.ts` como **congelado**.
+
+**Hito:** el stakeholder recorre todos los flujos sin backend; los hallazgos quedan en la bitácora; el contrato del API queda congelado y el mismo `db.json` queda listo para sembrar MySQL en Fase 2 (Sprints 1–6).
+
+---
+
 ### Sprint 1 — Autenticación y RBAC (24–25 jun)
 
 **Objetivo:** que nadie acceda a un endpoint de negocio sin credenciales válidas **y** correo en whitelist, y que el rol `direccion` quede técnicamente incapaz de escribir.

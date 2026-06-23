@@ -1,0 +1,84 @@
+{
+  "_demo": {
+    "descripcion": "Espejo EXACTO del DDL (doc 03). Datos ficticios sin PII (dominios @demo / fiscales inventados). Claves de nivel superior = nombres de tabla del DDL. 'usuarios' es stand-in de Shield solo para el demo.",
+    "demo_now": "2026-06-22T08:30:00-07:00",
+    "periodo_actual": "2026-06",
+    "moneda": "MXN",
+    "casos_qa": {
+      "QA1_consolidacion": "CLI-001 NIDEC consolida nombres variantes (NIDEC Mobility / Nidec México) en una sola entidad.",
+      "QA2_facturado_mes": "Facturas de junio (Pagada|Vigente) suman 100000; F-9806 de mayo (50000) se excluye.",
+      "QA3_por_facturar": "CAP-00231 devengado Pendiente = 10000 (único pendiente).",
+      "QA4_por_cobrar": "F-9901 total 50000 con abono 20000 -> saldo 30000.",
+      "QA5_whitelist": "intruso@competidor.com NO existe en AUTH_WHITELIST -> acceso denegado."
+    }
+  },
+
+  "CAT_CLIENTES": [
+    { "ID_Cliente": "CLI-001", "Nombre_Fiscal": "NIDEC Mobility México S.A. de C.V.", "Nombre_Comercial": "NIDEC Mobility", "RFC": "NMO180423QF1", "Estatus": "Activo" },
+    { "ID_Cliente": "CLI-002", "Nombre_Fiscal": "Bocar Group S.A. de C.V.", "Nombre_Comercial": "Bocar", "RFC": "BGR990817AB2", "Estatus": "Activo" },
+    { "ID_Cliente": "CLI-003", "Nombre_Fiscal": "Lear Corporation México S. de R.L. de C.V.", "Nombre_Comercial": "Lear Corporation", "RFC": "LCM0102039X8", "Estatus": "Activo" },
+    { "ID_Cliente": "CLI-004", "Nombre_Fiscal": "Foxconn Baja California S.A. de C.V.", "Nombre_Comercial": "Foxconn CTBG", "RFC": "FBC050610TR4", "Estatus": "Activo" },
+    { "ID_Cliente": "CLI-005", "Nombre_Fiscal": "Maquilas del Norte S.A. de C.V.", "Nombre_Comercial": "Maquilas del Norte", "RFC": "MNO991115KL2", "Estatus": "Inactivo" },
+    { "ID_Cliente": "CLI-006", "Nombre_Fiscal": "Aptiv Services México S. de R.L. de C.V.", "Nombre_Comercial": "Aptiv", "RFC": "ASM160820UV9", "Estatus": "Activo" }
+  ],
+
+  "COTIZACIONES": [
+    { "ID_Cotizacion": "COT-0042", "ID_Cliente": "CLI-001", "PO_Referencia": "PO-77310", "Monto_Autorizado": 250000.00, "Piezas_Autorizadas": 120000, "Estatus": "Aprobada" },
+    { "ID_Cotizacion": "COT-0080", "ID_Cliente": "CLI-001", "PO_Referencia": null, "Monto_Autorizado": 60000.00, "Piezas_Autorizadas": null, "Estatus": "Pendiente PO" },
+    { "ID_Cotizacion": "COT-0051", "ID_Cliente": "CLI-002", "PO_Referencia": "PO-78002", "Monto_Autorizado": 180000.00, "Piezas_Autorizadas": 90000, "Estatus": "Aprobada" },
+    { "ID_Cotizacion": "COT-0060", "ID_Cliente": "CLI-003", "PO_Referencia": "PO-79110", "Monto_Autorizado": 120000.00, "Piezas_Autorizadas": 60000, "Estatus": "Aprobada" },
+    { "ID_Cotizacion": "COT-0061", "ID_Cliente": "CLI-003", "PO_Referencia": "PO-79111", "Monto_Autorizado": 80000.00, "Piezas_Autorizadas": 40000, "Estatus": "Pendiente PO" },
+    { "ID_Cotizacion": "COT-0070", "ID_Cliente": "CLI-004", "PO_Referencia": "PO-75000", "Monto_Autorizado": 90000.00, "Piezas_Autorizadas": 45000, "Estatus": "Cerrada" }
+  ],
+
+  "BITACORA_SORTEO": [
+    { "ID_Captura": "CAP-00210", "Fecha": "2026-05-20", "ID_Cotizacion": "COT-0042", "Horas_Trabajadas": 200.00, "Piezas_Sorteadas": 40000, "Monto_Devengado": 50000.00, "Estatus_Facturacion": "Facturado" },
+    { "ID_Captura": "CAP-00231", "Fecha": "2026-06-15", "ID_Cotizacion": "COT-0042", "Horas_Trabajadas": 40.00, "Piezas_Sorteadas": 8000, "Monto_Devengado": 10000.00, "Estatus_Facturacion": "Pendiente" },
+    { "ID_Captura": "CAP-00240", "Fecha": "2026-06-04", "ID_Cotizacion": "COT-0051", "Horas_Trabajadas": 120.00, "Piezas_Sorteadas": 24000, "Monto_Devengado": 30000.00, "Estatus_Facturacion": "Facturado" },
+    { "ID_Captura": "CAP-00250", "Fecha": "2026-06-02", "ID_Cotizacion": "COT-0060", "Horas_Trabajadas": 80.00, "Piezas_Sorteadas": 16000, "Monto_Devengado": 20000.00, "Estatus_Facturacion": "Facturado" },
+    { "ID_Captura": "CAP-00260", "Fecha": "2026-04-10", "ID_Cotizacion": "COT-0070", "Horas_Trabajadas": 160.00, "Piezas_Sorteadas": 32000, "Monto_Devengado": 40000.00, "Estatus_Facturacion": "Facturado" }
+  ],
+
+  "FACTURAS": [
+    { "Folio_Factura": "F-9901", "ID_Cliente": "CLI-001", "Fecha_Emision": "2026-06-03", "Monto_Subtotal": 43103.45, "Monto_Total": 50000.00, "Fecha_Vencimiento": "2026-07-03", "Estatus_Pago": "Vigente" },
+    { "Folio_Factura": "F-9902", "ID_Cliente": "CLI-002", "Fecha_Emision": "2026-06-08", "Monto_Subtotal": 25862.07, "Monto_Total": 30000.00, "Fecha_Vencimiento": "2026-07-08", "Estatus_Pago": "Pagada" },
+    { "Folio_Factura": "F-9903", "ID_Cliente": "CLI-003", "Fecha_Emision": "2026-06-05", "Monto_Subtotal": 17241.38, "Monto_Total": 20000.00, "Fecha_Vencimiento": "2026-07-05", "Estatus_Pago": "Pagada" },
+    { "Folio_Factura": "F-9806", "ID_Cliente": "CLI-003", "Fecha_Emision": "2026-05-10", "Monto_Subtotal": 43103.45, "Monto_Total": 50000.00, "Fecha_Vencimiento": "2026-06-09", "Estatus_Pago": "Vencida" },
+    { "Folio_Factura": "F-9700", "ID_Cliente": "CLI-004", "Fecha_Emision": "2026-04-15", "Monto_Subtotal": 34482.76, "Monto_Total": 40000.00, "Fecha_Vencimiento": "2026-05-15", "Estatus_Pago": "Pagada" }
+  ],
+
+  "PAGOS": [
+    { "ID_Pago": "PAG-0307", "Folio_Factura": "F-9901", "Fecha_Pago": "2026-06-12", "Monto_Pagado": 20000.00, "Referencia": "SPEI BANORTE 9122" },
+    { "ID_Pago": "PAG-0312", "Folio_Factura": "F-9902", "Fecha_Pago": "2026-06-20", "Monto_Pagado": 30000.00, "Referencia": "SPEI BBVA 4471" },
+    { "ID_Pago": "PAG-0315", "Folio_Factura": "F-9903", "Fecha_Pago": "2026-06-10", "Monto_Pagado": 20000.00, "Referencia": "Transferencia Santander 8830" },
+    { "ID_Pago": "PAG-0290", "Folio_Factura": "F-9700", "Fecha_Pago": "2026-05-02", "Monto_Pagado": 40000.00, "Referencia": "Cheque 1180" }
+  ],
+
+  "AUTH_WHITELIST": [
+    { "id": 1, "correo": "eric@bestqualitysolutions.com", "activo": 1, "creado_por": null, "creado_en": "2026-06-17 09:00:00" },
+    { "id": 2, "correo": "facturacion@bestqualitysolutions.com", "activo": 1, "creado_por": 4, "creado_en": "2026-06-17 09:05:00" },
+    { "id": 3, "correo": "captura@bestqualitysolutions.com", "activo": 1, "creado_por": 4, "creado_en": "2026-06-17 09:06:00" },
+    { "id": 4, "correo": "admin@dataholics.com.mx", "activo": 1, "creado_por": null, "creado_en": "2026-06-17 08:00:00" },
+    { "id": 5, "correo": "exempleado@bestqualitysolutions.com", "activo": 0, "creado_por": 4, "creado_en": "2026-06-01 10:00:00" }
+  ],
+
+  "AUDITORIA": [
+    { "id": 1, "usuario_id": 2, "accion": "crear", "entidad": "FACTURAS", "entidad_id": "F-9901", "valores_antes": null, "valores_despues": { "Estatus_Pago": "Vigente", "Monto_Total": 50000.00 }, "ip": "189.203.10.4", "creado_en": "2026-06-03 11:20:00" },
+    { "id": 2, "usuario_id": 2, "accion": "crear", "entidad": "PAGOS", "entidad_id": "PAG-0307", "valores_antes": null, "valores_despues": { "Monto_Pagado": 20000.00, "Folio_Factura": "F-9901" }, "ip": "189.203.10.4", "creado_en": "2026-06-12 16:05:00" },
+    { "id": 3, "usuario_id": 4, "accion": "crear", "entidad": "CAT_CLIENTES", "entidad_id": "CLI-002", "valores_antes": null, "valores_despues": { "Nombre_Comercial": "Bocar", "Estatus": "Activo" }, "ip": "200.92.18.77", "creado_en": "2026-06-17 12:00:00" },
+    { "id": 4, "usuario_id": 2, "accion": "actualizar", "entidad": "FACTURAS", "entidad_id": "F-9902", "valores_antes": { "Estatus_Pago": "Vigente" }, "valores_despues": { "Estatus_Pago": "Pagada" }, "ip": "189.203.10.4", "creado_en": "2026-06-20 10:15:00" },
+    { "id": 5, "usuario_id": 1, "accion": "acceso", "entidad": "dashboard", "entidad_id": "resumen", "valores_antes": null, "valores_despues": null, "ip": "201.140.55.9", "creado_en": "2026-06-22 08:30:00" }
+  ],
+
+  "JOBS_COLA": [
+    { "id": 1, "tipo": "import_inicial", "payload": { "origen": "Google Sheets BQS", "filas": 1284 }, "estado": "completado", "intentos": 1, "max_intentos": 3, "ultimo_error": null, "creado_en": "2026-06-17 08:30:00", "actualizado_en": "2026-06-17 08:34:12" },
+    { "id": 2, "tipo": "marcar_vencidas", "payload": null, "estado": "completado", "intentos": 1, "max_intentos": 3, "ultimo_error": null, "creado_en": "2026-06-22 00:15:00", "actualizado_en": "2026-06-22 00:15:03" }
+  ],
+
+  "usuarios": [
+    { "id": 1, "correo": "eric@bestqualitysolutions.com", "nombre": "Eric — Dirección General", "roles": ["direccion"], "solo_lectura": true },
+    { "id": 2, "correo": "facturacion@bestqualitysolutions.com", "nombre": "Cobranza BQS", "roles": ["facturacion"], "solo_lectura": false },
+    { "id": 3, "correo": "captura@bestqualitysolutions.com", "nombre": "Lourdes Núñez", "roles": ["capturista"], "solo_lectura": false },
+    { "id": 4, "correo": "admin@dataholics.com.mx", "nombre": "Admin Dataholics", "roles": ["admin", "facturacion"], "solo_lectura": false }
+  ]
+}

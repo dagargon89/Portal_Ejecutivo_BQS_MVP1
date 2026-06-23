@@ -1,0 +1,75 @@
+/* =====================================================================
+   Portal Ejecutivo BQS — Demo · Estilos raíz (Tailwind 4, CSS-first)
+   Los tokens del @theme provienen del Design System (doc 08 §6/§7) y
+   generan utilidades: bg-primary, text-warning-strong, bg-info-soft, etc.
+   Hex canónicos respetados; tonos derivados verificados WCAG AA (doc 08 §10).
+   ===================================================================== */
+@import "tailwindcss";
+
+@theme {
+  /* === Marca / primario (canónico) === */
+  --color-primary: #0b4f9e;
+  --color-primary-hover: #08407f;
+  --color-primary-soft: #eaf2fb;
+  --color-primary-contrast: #ffffff;
+
+  /* === Secundario / positivo (canónico + derivados) === */
+  --color-secondary: #0e9f6e;
+  --color-secondary-strong: #0a7d57;
+  --color-secondary-soft: #e6f6ef;
+
+  /* === Semánticos de estado === */
+  --color-success: #0e9f6e;
+  --color-success-soft: #e6f6ef;
+  --color-warning: #b45309;
+  --color-warning-strong: #92400e;
+  --color-warning-soft: #fbf1e5;
+  --color-danger: #b91c1c;
+  --color-danger-soft: #fbe9e9;
+  --color-info: #0b4f9e;
+  --color-info-soft: #eaf2fb;
+
+  /* === Tipografía (doc 08 §3) === */
+  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica,
+    Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* === Sombras sutiles (doc 08 §4.4) === */
+  --shadow-sm: 0 1px 2px 0 rgb(15 23 42 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(15 23 42 / 0.08);
+  --shadow-lg: 0 10px 15px -3px rgb(15 23 42 / 0.1);
+
+  /* === Movimiento (doc 08 §9) === */
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    margin: 0;
+    background-color: #f8fafc; /* --color-bg (slate-50) */
+    color: #0f172a; /* --color-text (slate-900) */
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Cifras financieras: dígitos de ancho fijo (doc 08 §3.1, regla dura) */
+  .num {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Respeto a prefers-reduced-motion (doc 08 §9) */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
