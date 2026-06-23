@@ -77,6 +77,15 @@ export function errorCode(error: unknown): string | null {
   return null
 }
 
+/** Errores por campo (validación) del envelope de error, si los hay. */
+export function errorFields(error: unknown): Record<string, string> | null {
+  if (axios.isAxiosError(error)) {
+    const data = error.response?.data as ApiErrorEnvelope | undefined
+    return data?.error?.fields ?? null
+  }
+  return null
+}
+
 /** Mensaje legible: prioriza el del envelope de error; cae a Error.message. */
 export function errorMessage(error: unknown): string {
   if (axios.isAxiosError(error)) {
