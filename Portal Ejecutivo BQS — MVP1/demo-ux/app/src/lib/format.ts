@@ -20,6 +20,32 @@ export function num(n: number): string {
   return new Intl.NumberFormat("es-MX").format(n);
 }
 
+/** "$780.0k" — moneda compacta para etiquetas de gráficas. */
+export function moneyCompact(n: number): string {
+  return new Intl.NumberFormat("es-MX", {
+    style: "currency",
+    currency: "MXN",
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(n);
+}
+
+/** 0.85 -> "85%". */
+export function pct(n: number): string {
+  return new Intl.NumberFormat("es-MX", {
+    style: "percent",
+    maximumFractionDigits: 0,
+  }).format(n);
+}
+
+/** "2026-06" -> "jun" (etiqueta corta de mes para series). */
+export function mesCorto(periodo: string): string {
+  const [y, m] = periodo.split("-").map(Number);
+  if (!y || !m) return periodo;
+  const d = new Date(y, m - 1, 1);
+  return new Intl.DateTimeFormat("es-MX", { month: "short" }).format(d).replace(".", "");
+}
+
 /** "2026-06-15" -> "15 jun 2026". */
 export function fecha(iso: string): string {
   if (!iso) return "—";

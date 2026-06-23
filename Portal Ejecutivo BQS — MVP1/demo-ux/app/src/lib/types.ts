@@ -153,6 +153,51 @@ export interface ResumenEjecutivo {
   calculado_en: string; // ISO
 }
 
+/* ---------- Métricas ampliadas del dashboard (demo) ----------
+ * Analítica derivada del mismo ciclo de cobro. En Fase 2 la calcula el
+ * servidor (GET /dashboard/metricas); el cliente solo grafica. */
+export interface SerieMes {
+  periodo: string; // "2026-06"
+  facturado: number; // Σ Monto_Total emitido en el mes
+  cobrado: number; // Σ pagos recibidos en el mes
+}
+
+export interface DistribEstatus {
+  estatus: EstatusPago;
+  cantidad: number;
+  monto: number;
+}
+
+export interface TopClienteCartera {
+  ID_Cliente: string;
+  Nombre_Comercial: string | null;
+  saldo: number;
+}
+
+export interface EmbudoCiclo {
+  autorizado: number; // Σ Monto_Autorizado de cotizaciones
+  devengado: number; // Σ Monto_Devengado capturado
+  facturado: number; // Σ devengado ya Facturado
+  cobrado: number; // Σ pagos recibidos
+}
+
+export interface MetricasDashboard {
+  periodo: string;
+  moneda: "MXN";
+  cobrado_mes: number;
+  tasa_cobro: number; // 0..1 (cobrado_mes / facturado_mes)
+  cartera_vencida: number;
+  pct_vencida: number; // 0..1 (vencida / por_cobrar)
+  clientes_activos: number;
+  clientes_total: number;
+  ticket_promedio: number;
+  facturas_emitidas_mes: number;
+  serie_mensual: SerieMes[]; // últimos 6 meses
+  distribucion_estatus: DistribEstatus[];
+  top_clientes: TopClienteCartera[];
+  embudo: EmbudoCiclo;
+}
+
 export interface DesgloseCotizacion {
   ID_Cotizacion: string;
   ID_Cliente: string;

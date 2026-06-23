@@ -24,11 +24,13 @@ import type {
   Factura,
   FacturaDetalle,
   LoginInput,
+  MetricasDashboard,
   Pago,
   PagoInput,
   PorCobrar,
   PorFacturar,
   ResumenEjecutivo,
+  EstatusPago,
   SesionResp,
   Usuario,
   WhitelistInput,
@@ -140,6 +142,111 @@ export const apiMock: ApiClient = {
       por_facturar,
       por_cobrar,
       calculado_en: CALCULADO_EN,
+    };
+  },
+
+  /* ===== Dashboard: métricas ampliadas (analítica del ciclo de cobro) ===== */
+  async dashMetricas(): Promise<MetricasDashboard> {
+    await delay(360);
+    const facturas = facturasAll();
+    const pagos = pagosAll();
+    const cotz = cotizacionesAll();
+    const dev = devengadoAll();
+    const clientes = clientesAll();
+
+    const enMes = (iso: string, periodo: string) => iso.slice(0, 7) === periodo;
+
+    // Facturado y cobrado del mes en curso
+    const facturado_mes = sum(
+      facturas
+        .filter(
+          (f) =>
+            enMes(f.Fecha_Emision, PERIODO) &&
+            (f.Estatus_Pago === "Pagada" || f.Estatus_Pago === "Vigente"),
+        )
+        .map((f) => f.Monto_Total),
+    );
+    const cobrado_mes = sum(
+      pagos.filter((p) => enMes(p.Fecha_Pago, PERIODO)).map((p) => p.Monto_Pagado),
+    );
+    const tasa_cobro = facturado_mes > 0 ? round2(cobrado_mes / facturado_mes) : 0;
+
+    // Cartera por cobrar y porción vencida
+    const activas = facturas.filter(
+      (f) => f.Estatus_Pago === "Vigente" || f.Estatus_Pago === "Vencida",
+    );
+    const por_cobrar = sum(activas.map((f) => f.Monto_Total - pagadoDe(f.Folio_Factura)));
+    const cartera_vencida = sum(
+      facturas
+        .filter((f) => f.Estatus_Pago === "Vencida")
+        .map((f) => f.Monto_Total - pagadoDe(f.Folio_Factura)),
+    );
+    const pct_vencida = por_cobrar > 0 ? round2(cartera_vencida / por_cobrar) : 0;
+
+    // Serie de los últimos 6 meses (facturado emitido vs cobrado)
+    const [ay, am] = PERIODO.split("-").map(Number);
+    const serie_mensual = Array.from({ length: 6 }, (_, i) => {
+      const d = new Date(ay, am - 1 - (5 - i), 1);
+      const periodo = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      return {
+        periodo,
+        facturado: sum(
+          facturas.filter((f) => enMes(f.Fecha_Emision, periodo)).map((f) => f.Monto_Total),
+        ),
+        cobrado: sum(pagos.filter((p) => enMes(p.Fecha_Pago, periodo)).map((p) => p.Monto_Pagado)),
+      };
+    });
+
+    // Distribución de facturas por estatus
+    const ordenEstatus: EstatusPago[] = ["Pagada", "Vigente", "Vencida"];
+    const distribucion_estatus = ordenEstatus
+      .map((estatus) => {
+        const fs = facturas.filter((f) => f.Estatus_Pago === estatus);
+        return { estatus, cantidad: fs.length, monto: sum(fs.map((f) => f.Monto_Total)) };
+      })
+      .filter((d) => d.cantidad > 0);
+
+    // Top clientes por saldo en cartera
+    const saldoPorCliente = new Map<string, number>();
+    for (const f of activas) {
+      const saldo = round2(f.Monto_Total - pagadoDe(f.Folio_Factura));
+      if (saldo <= 0) continue;
+      saldoPorCliente.set(f.ID_Cliente, round2((saldoPorCliente.get(f.ID_Cliente) ?? 0) + saldo));
+    }
+    const top_clientes = [...saldoPorCliente.entries()]
+      .map(([ID_Cliente, saldo]) => ({ ID_Cliente, Nombre_Comercial: comercialDe(ID_Cliente), saldo }))
+      .sort((a, b) => b.saldo - a.saldo)
+      .slice(0, 5);
+
+    // Embudo del ciclo de cobro (decreciente)
+    const embudo = {
+      autorizado: sum(cotz.map((c) => c.Monto_Autorizado)),
+      devengado: sum(dev.map((b) => b.Monto_Devengado)),
+      facturado: sum(
+        dev.filter((b) => b.Estatus_Facturacion === "Facturado").map((b) => b.Monto_Devengado),
+      ),
+      cobrado: sum(pagos.map((p) => p.Monto_Pagado)),
+    };
+
+    const ticket_promedio = facturas.length
+      ? round2(sum(facturas.map((f) => f.Monto_Total)) / facturas.length)
+      : 0;
+
+    return {
+      periodo: PERIODO,
+      moneda: "MXN",
+      cobrado_mes,
+      tasa_cobro,
+      cartera_vencida,
+      pct_vencida,
+      clientes_activos: clientes.filter((c) => c.Estatus === "Activo").length,
+      clientes_total: clientes.length,
+      ticket_promedio,
+      facturas_emitidas_mes: facturas.filter((f) => enMes(f.Fecha_Emision, PERIODO)).length,
+      serie_mensual,
+      distribucion_estatus,
+      top_clientes,
+      embudo,
     };
   },
 

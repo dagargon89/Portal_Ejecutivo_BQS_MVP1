@@ -76,6 +76,7 @@ export const apiReal: ApiClient = {
 
   /* Dashboard */
   dashResumen: () => data<T.ResumenEjecutivo>("GET", "/dashboard/resumen"),
+  dashMetricas: () => data<T.MetricasDashboard>("GET", "/dashboard/metricas"),
   dashPorFacturar: (p: PageParams = {}) => paged<T.PorFacturar>("GET", `/dashboard/por-facturar${qs(p)}`),
   dashPorCobrar: (p: PageParams = {}) => paged<T.PorCobrar>("GET", `/dashboard/por-cobrar${qs(p)}`),
 

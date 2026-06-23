@@ -11,6 +11,7 @@
  *   logout          POST   /v1/auth/logout
  *   me              GET    /v1/auth/me
  *   dashResumen     GET    /v1/dashboard/resumen
+ *   dashMetricas    GET    /v1/dashboard/metricas
  *   dashPorFacturar GET    /v1/dashboard/por-facturar
  *   dashPorCobrar   GET    /v1/dashboard/por-cobrar
  *   listarClientes  GET    /v1/clientes
@@ -50,6 +51,7 @@ import type {
   Factura,
   FacturaDetalle,
   LoginInput,
+  MetricasDashboard,
   Paged,
   PagoInput,
   PorCobrar,
@@ -74,6 +76,7 @@ export interface ApiClient {
 
   /* ---- Dashboard ejecutivo (3 preguntas) ---- */
   dashResumen(): Promise<ResumenEjecutivo>;
+  dashMetricas(): Promise<MetricasDashboard>;
   dashPorFacturar(p?: PageParams): Promise<Paged<PorFacturar>>;
   dashPorCobrar(p?: PageParams): Promise<Paged<PorCobrar>>;
 
