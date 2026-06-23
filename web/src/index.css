@@ -84,6 +84,11 @@ body {
   text-rendering: optimizeLegibility;
 }
 
+/* Cifras financieras: dígitos de ancho fijo para alinear montos en columnas. */
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
 /* Discreet, functional motion only — respect reduced-motion (§9). */
 @media (prefers-reduced-motion: reduce) {
   *,
