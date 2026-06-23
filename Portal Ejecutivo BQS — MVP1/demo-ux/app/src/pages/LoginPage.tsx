@@ -23,9 +23,6 @@ import { api, ApiError } from "@/lib";
 
 const PERSONAS = [
   { correo: "admin@dataholics.com.mx", nombre: "Admin Dataholics", desc: "Ve todo el sistema" },
-  { correo: "facturacion@bestqualitysolutions.com", nombre: "Cobranza BQS", desc: "Facturación y pagos" },
-  { correo: "captura@bestqualitysolutions.com", nombre: "Lourdes Núñez", desc: "Captura de devengado" },
-  { correo: "eric@bestqualitysolutions.com", nombre: "Eric — Dirección", desc: "Solo lectura" },
 ];
 
 const FEATURES = [
@@ -217,10 +214,6 @@ export function LoginPage() {
                   </button>
                 ))}
               </div>
-              <p className="mt-3 flex items-center gap-1 text-xs text-slate-400">
-                <ShieldCheck className="h-3.5 w-3.5" aria-hidden />
-                Prueba <code className="font-mono">intruso@competidor.com</code> para ver el bloqueo (QA5).
-              </p>
             </div>
           </div>
         </div>
