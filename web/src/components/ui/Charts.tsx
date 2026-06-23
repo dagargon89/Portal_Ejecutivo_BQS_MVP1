@@ -91,7 +91,6 @@ export function DonaEstatus({ data }: { data: DistribEstatus[] }) {
   const totalCant = data.reduce((a, d) => a + d.cantidad, 0)
   const R = 60
   const C = 2 * Math.PI * R
-  let offset = 0
 
   return (
     <div className="flex flex-col items-center gap-5 sm:flex-row sm:justify-center sm:gap-8">
@@ -102,10 +101,12 @@ export function DonaEstatus({ data }: { data: DistribEstatus[] }) {
         aria-label="Distribución de facturas por estatus"
       >
         <circle cx="80" cy="80" r={R} fill="none" stroke="var(--color-surface-2, #f1f5f9)" strokeWidth="18" />
-        {data.map((d) => {
-          const frac = d.monto / total
-          const dash = frac * C
-          const seg = (
+        {data.map((d, i) => {
+          // Arco del segmento y desplazamiento acumulado (suma de los previos),
+          // calculados sin mutar estado durante el render.
+          const dash = (d.monto / total) * C
+          const offset = data.slice(0, i).reduce((a, x) => a + (x.monto / total) * C, 0)
+          return (
             <circle
               key={d.estatus}
               cx="80"
@@ -120,8 +121,6 @@ export function DonaEstatus({ data }: { data: DistribEstatus[] }) {
               <title>{`${d.estatus}: ${formatMoneda(d.monto)} (${d.cantidad})`}</title>
             </circle>
           )
-          offset += dash
-          return seg
         })}
       </svg>
       <ul className="flex flex-col gap-2 text-sm">

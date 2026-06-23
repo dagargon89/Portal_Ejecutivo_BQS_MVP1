@@ -1,7 +1,12 @@
+/* Login (público). Valida credenciales + whitelist en el backend; ante
+ * NOT_WHITELISTED redirige a /acceso-denegado. UI re-estilizada del demo. */
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAuth } from '../../hooks/useAuth'
+import { AlertCircle } from 'lucide-react'
+import { Button } from '@/components/ui/Button'
+import { TextField } from '@/components/ui/TextField'
+import { useAuth } from '@/hooks/useAuth'
 
 export function LoginPage() {
   const { login } = useAuth()
@@ -35,65 +40,69 @@ export function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
-      <div className="w-full max-w-sm rounded-lg bg-white p-6 shadow-md sm:p-8">
-        <header className="mb-6 text-center">
-          <h1 className="text-xl font-bold text-primary">Portal Ejecutivo BQS</h1>
-          <p className="mt-1 text-sm text-slate-500">Acceso a cuentas por cobrar y facturación</p>
-        </header>
+    <main className="grid min-h-screen lg:grid-cols-2">
+      {/* Marca (oculta en móvil) */}
+      <div className="hidden flex-col justify-between bg-primary p-10 text-white lg:flex">
+        <div className="flex items-center gap-2">
+          <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/15 text-sm font-bold">
+            BQS
+          </span>
+          <span className="text-sm font-semibold">Portal Ejecutivo · Dataholics</span>
+        </div>
+        <div>
+          <h2 className="text-3xl font-bold leading-tight">Cuentas por cobrar y facturación, en un vistazo.</h2>
+          <p className="mt-3 max-w-md text-sm text-white/80">
+            Las tres preguntas del negocio —qué se facturó, qué falta por facturar y cuánto deben—
+            calculadas en el servidor.
+          </p>
+        </div>
+        <p className="text-xs text-white/60">Best Quality Solutions México</p>
+      </div>
 
-        <form onSubmit={onSubmit} noValidate className="space-y-4">
-          <div>
-            <label htmlFor="correo" className="mb-1 block text-sm font-medium text-slate-700">
-              Correo
-            </label>
-            <input
-              id="correo"
+      {/* Formulario */}
+      <div className="flex items-center justify-center bg-slate-50 px-4 py-12">
+        <div className="w-full max-w-sm">
+          <header className="mb-6 text-center lg:text-left">
+            <h1 className="text-2xl font-bold text-slate-900">Iniciar sesión</h1>
+            <p className="mt-1 text-sm text-slate-500">Acceso a cuentas por cobrar y facturación</p>
+          </header>
+
+          <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
+            <TextField
+              label="Correo"
               type="email"
               autoComplete="username"
               required
               value={correo}
               onChange={(e) => setCorreo(e.target.value)}
-              aria-invalid={error !== null}
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-slate-900 outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
             />
-          </div>
-
-          <div>
-            <label htmlFor="password" className="mb-1 block text-sm font-medium text-slate-700">
-              Contraseña
-            </label>
-            <input
-              id="password"
+            <TextField
+              label="Contraseña"
               type="password"
               autoComplete="current-password"
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              aria-invalid={error !== null}
-              aria-describedby={error !== null ? 'login-error' : undefined}
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-slate-900 outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
             />
-          </div>
 
-          {error !== null && (
-            <p id="login-error" role="alert" className="rounded-md bg-danger-soft px-3 py-2 text-sm text-danger">
-              {error}
-            </p>
-          )}
+            {error !== null ? (
+              <p
+                role="alert"
+                className="flex items-center gap-2 rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger"
+              >
+                <AlertCircle className="h-4 w-4 shrink-0" aria-hidden /> {error}
+              </p>
+            ) : null}
 
-          <button
-            type="submit"
-            disabled={enviando}
-            className="w-full rounded-md bg-primary px-4 py-2 font-semibold text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {enviando ? 'Ingresando…' : 'Iniciar sesión'}
-          </button>
-        </form>
+            <Button type="submit" loading={enviando} className="w-full">
+              Iniciar sesión
+            </Button>
+          </form>
 
-        <p className="mt-6 text-center text-xs text-slate-400">
-          Best Quality Solutions · desarrollado por Dataholics
-        </p>
+          <p className="mt-6 text-center text-xs text-slate-400">
+            Best Quality Solutions · desarrollado por Dataholics
+          </p>
+        </div>
       </div>
     </main>
   )

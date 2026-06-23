@@ -1,145 +1,141 @@
-import { useCallback, useEffect, useState } from 'react'
-import type { FormEvent } from 'react'
-import { Link } from 'react-router-dom'
-import { api, errorCode } from '../../../lib/api'
-import type { ApiCollectionEnvelope, ApiEnvelope, WhitelistEntry } from '../../../lib/types'
+/* Whitelist de acceso (admin): alta y revocación de correos autorizados.
+ * Segunda barrera además de credenciales (CLAUDE.md regla 3). UI del demo. */
+import { useState } from 'react'
+import type { ChangeEvent } from 'react'
+import { ShieldCheck, Plus, CheckCircle2, XCircle } from 'lucide-react'
+import { PageHeader } from '@/components/ui/PageHeader'
+import { Card } from '@/components/ui/Card'
+import { Button } from '@/components/ui/Button'
+import { TextField } from '@/components/ui/TextField'
+import { DataTable } from '@/components/ui/DataTable'
+import type { Column } from '@/components/ui/DataTable'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { ErrorState } from '@/components/ui/ErrorState'
+import { TableSkeleton } from '@/components/ui/Skeleton'
+import { useToast } from '@/components/ui/Toast'
+import { useAsync } from '@/hooks/useAsync'
+import { api, errorMessage } from '@/lib/api'
+import type { ApiCollectionEnvelope, ApiEnvelope, WhitelistEntry } from '@/lib/types'
+
+async function listarWhitelist(): Promise<WhitelistEntry[]> {
+  const resp = await api.get<ApiCollectionEnvelope<WhitelistEntry>>('/v1/admin/whitelist')
+  return resp.data.data
+}
 
 export function WhitelistPage() {
-  const [entries, setEntries] = useState<WhitelistEntry[]>([])
-  const [cargando, setCargando] = useState(true)
+  const toast = useToast()
+  const { data, loading, error, reload } = useAsync(() => listarWhitelist(), [])
   const [nuevo, setNuevo] = useState('')
-  const [mensaje, setMensaje] = useState<{ tipo: 'ok' | 'error'; texto: string } | null>(null)
+  const [guardando, setGuardando] = useState(false)
 
-  const cargar = useCallback(async () => {
+  async function agregar() {
+    const correo = nuevo.trim()
+    if (correo === '') return
+    setGuardando(true)
     try {
-      const resp = await api.get<ApiCollectionEnvelope<WhitelistEntry>>('/v1/admin/whitelist')
-      setEntries(resp.data.data)
-    } catch {
-      setMensaje({ tipo: 'error', texto: 'No se pudo cargar la lista.' })
-    } finally {
-      setCargando(false)
-    }
-  }, [])
-
-  // Carga inicial: el setState ocurre DESPUES del await (no sincrono en el
-  // cuerpo del efecto), con guarda `active` para evitar updates tras desmontar.
-  useEffect(() => {
-    let active = true
-    void (async () => {
-      try {
-        const resp = await api.get<ApiCollectionEnvelope<WhitelistEntry>>('/v1/admin/whitelist')
-        if (active) setEntries(resp.data.data)
-      } catch {
-        if (active) setMensaje({ tipo: 'error', texto: 'No se pudo cargar la lista.' })
-      } finally {
-        if (active) setCargando(false)
-      }
-    })()
-    return () => {
-      active = false
-    }
-  }, [])
-
-  async function agregar(e: FormEvent) {
-    e.preventDefault()
-    setMensaje(null)
-    try {
-      await api.post<ApiEnvelope<WhitelistEntry>>('/v1/admin/whitelist', { correo: nuevo.trim() })
+      await api.post<ApiEnvelope<WhitelistEntry>>('/v1/admin/whitelist', { correo })
       setNuevo('')
-      setMensaje({ tipo: 'ok', texto: 'Correo agregado.' })
-      await cargar()
-    } catch (error) {
-      const code = errorCode(error)
-      setMensaje({
-        tipo: 'error',
-        texto: code === 'CONFLICT' ? 'El correo ya existe en la whitelist.' : 'Correo inválido.',
-      })
+      toast.push({ tipo: 'success', titulo: 'Correo agregado' })
+      reload()
+    } catch (e) {
+      toast.push({ tipo: 'error', titulo: 'No se pudo agregar', descripcion: errorMessage(e) })
+    } finally {
+      setGuardando(false)
     }
   }
 
   async function revocar(id: number) {
-    setMensaje(null)
     try {
       await api.delete(`/v1/admin/whitelist/${String(id)}`)
-      await cargar()
-    } catch {
-      setMensaje({ tipo: 'error', texto: 'No se pudo revocar el correo.' })
+      toast.push({ tipo: 'success', titulo: 'Acceso revocado' })
+      reload()
+    } catch (e) {
+      toast.push({ tipo: 'error', titulo: 'No se pudo revocar', descripcion: errorMessage(e) })
     }
   }
 
-  return (
-    <main className="min-h-screen bg-slate-50">
-      <header className="bg-primary text-white">
-        <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-4">
-          <h1 className="text-lg font-bold">Whitelist de acceso</h1>
-          <Link to="/" className="text-sm font-medium underline-offset-2 hover:underline">
-            ← Inicio
-          </Link>
-        </div>
-      </header>
-
-      <section className="mx-auto max-w-3xl px-4 py-8">
-        <form onSubmit={agregar} className="mb-6 flex flex-col gap-3 rounded-lg bg-white p-4 shadow-sm sm:flex-row">
-          <input
-            type="email"
-            required
-            value={nuevo}
-            onChange={(e) => setNuevo(e.target.value)}
-            placeholder="correo@empresa.com"
-            aria-label="Correo a autorizar"
-            className="flex-1 rounded-md border border-slate-300 px-3 py-2 outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
-          />
+  const columns: Column<WhitelistEntry>[] = [
+    { key: 'correo', header: 'Correo', render: (r) => r.correo },
+    {
+      key: 'estado',
+      header: 'Estado',
+      render: (r) =>
+        r.activo ? (
+          <span className="inline-flex items-center gap-1 rounded-full bg-success-soft px-2.5 py-1 text-xs font-medium text-secondary-strong">
+            <CheckCircle2 className="h-3.5 w-3.5" aria-hidden /> Activo
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-500">
+            <XCircle className="h-3.5 w-3.5" aria-hidden /> Revocado
+          </span>
+        ),
+    },
+    {
+      key: 'accion',
+      header: '',
+      align: 'right',
+      thClassName: 'w-28',
+      render: (r) =>
+        r.activo ? (
           <button
-            type="submit"
-            className="rounded-md bg-primary px-4 py-2 font-semibold text-white transition-colors hover:bg-primary-hover"
+            type="button"
+            onClick={() => void revocar(r.id)}
+            className="rounded-md border border-danger/30 px-2.5 py-1 text-xs font-medium text-danger hover:bg-danger-soft focus:outline-none focus-visible:ring-2 focus-visible:ring-danger"
           >
-            Agregar
+            Revocar
           </button>
+        ) : null,
+    },
+  ]
+
+  return (
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        title="Whitelist de acceso"
+        description="Correos autorizados a iniciar sesión; segunda barrera además de credenciales."
+      />
+
+      <Card className="p-4">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault()
+            void agregar()
+          }}
+          className="flex flex-col gap-3 sm:flex-row sm:items-end"
+        >
+          <div className="flex-1">
+            <TextField
+              label="Autorizar correo"
+              type="email"
+              placeholder="correo@empresa.com"
+              value={nuevo}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setNuevo(e.target.value)}
+            />
+          </div>
+          <Button type="submit" icon={<Plus className="h-4 w-4" aria-hidden />} loading={guardando}>
+            Agregar
+          </Button>
         </form>
+      </Card>
 
-        {mensaje !== null && (
-          <p
-            role="alert"
-            className={`mb-4 rounded-md px-3 py-2 text-sm ${
-              mensaje.tipo === 'ok' ? 'bg-success-soft text-secondary-strong' : 'bg-danger-soft text-danger'
-            }`}
-          >
-            {mensaje.texto}
-          </p>
-        )}
-
-        <div className="overflow-hidden rounded-lg bg-white shadow-sm">
-          {cargando ? (
-            <p className="p-4 text-slate-500">Cargando…</p>
-          ) : entries.length === 0 ? (
-            <p className="p-4 text-slate-500">No hay correos registrados.</p>
-          ) : (
-            <ul className="divide-y divide-slate-100">
-              {entries.map((entry) => (
-                <li key={entry.id} className="flex items-center justify-between gap-4 px-4 py-3">
-                  <div>
-                    <p className="font-medium text-slate-900">{entry.correo}</p>
-                    <span
-                      className={`text-xs font-medium ${entry.activo ? 'text-secondary-strong' : 'text-slate-400'}`}
-                    >
-                      {entry.activo ? '● Activo' : '○ Revocado'}
-                    </span>
-                  </div>
-                  {entry.activo && (
-                    <button
-                      type="button"
-                      onClick={() => void revocar(entry.id)}
-                      className="rounded-md border border-danger/30 px-3 py-1.5 text-sm font-medium text-danger transition-colors hover:bg-danger-soft"
-                    >
-                      Revocar
-                    </button>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      </section>
-    </main>
+      {loading ? (
+        <TableSkeleton cols={3} />
+      ) : error ? (
+        <ErrorState error={error} onRetry={reload} />
+      ) : data && data.length === 0 ? (
+        <EmptyState
+          icon={<ShieldCheck className="h-8 w-8" />}
+          title="Sin correos registrados"
+          message="Agrega el primer correo autorizado."
+        />
+      ) : data ? (
+        <DataTable
+          columns={columns}
+          rows={data}
+          rowKey={(r) => String(r.id)}
+          caption="Correos autorizados"
+        />
+      ) : null}
+    </div>
   )
 }

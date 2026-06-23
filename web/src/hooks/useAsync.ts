@@ -3,9 +3,10 @@
  * Convive con la capa Axios real: `fn` suele envolver una llamada de un
  * módulo de `@/lib` que ya desempaqueta el envelope `{data}`/`{meta}`.
  * El error se propaga como `unknown` y se formatea con `errorMessage`
- * (ver `<ErrorState>`).
+ * (ver `<ErrorState>`). El estado se actualiza dentro del IIFE async (tras
+ * el punto de await), con guarda `alive` (patrón del repo, React 19).
  * ===================================================================== */
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
 export interface AsyncState<T> {
   data: T | null
@@ -19,26 +20,23 @@ export function useAsync<T>(fn: () => Promise<T>, deps: unknown[] = []): AsyncSt
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<unknown>(null)
   const [tick, setTick] = useState(0)
-  const fnRef = useRef(fn)
-  fnRef.current = fn
 
   const reload = useCallback(() => setTick((t) => t + 1), [])
 
   useEffect(() => {
     let alive = true
-    setLoading(true)
-    setError(null)
-    fnRef
-      .current()
-      .then((res) => {
+    void (async () => {
+      setLoading(true)
+      setError(null)
+      try {
+        const res = await fn()
         if (alive) setData(res)
-      })
-      .catch((e: unknown) => {
+      } catch (e) {
         if (alive) setError(e)
-      })
-      .finally(() => {
+      } finally {
         if (alive) setLoading(false)
-      })
+      }
+    })()
     return () => {
       alive = false
     }
