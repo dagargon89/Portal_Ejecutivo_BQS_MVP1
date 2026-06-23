@@ -1,146 +1,152 @@
-import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
-import { errorCode } from '../../lib/api'
-import { obtenerCliente } from '../../lib/clientes'
-import { formatEntero, formatMoneda } from '../../lib/format'
-import type { ClienteConCartera } from '../../lib/types'
+/* Detalle de cliente: cartera consolidada (RF-CLI-03) — totales, cotizaciones
+ * y facturas. UI re-estilizada del demo, cableada a lib/clientes real. */
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import { ArrowLeft, Wallet, FileSpreadsheet } from 'lucide-react'
+import { PageHeader } from '@/components/ui/PageHeader'
+import { Card, CardHeader } from '@/components/ui/Card'
+import { KpiCard } from '@/components/ui/KpiCard'
+import { KpiSkeleton, TableSkeleton } from '@/components/ui/Skeleton'
+import { ErrorState } from '@/components/ui/ErrorState'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { DataTable } from '@/components/ui/DataTable'
+import type { Column } from '@/components/ui/DataTable'
+import { StatusBadge, badgeDePago } from '@/components/ui/StatusBadge'
+import { Button } from '@/components/ui/Button'
+import { useAsync } from '@/hooks/useAsync'
+import { obtenerCliente } from '@/lib/clientes'
+import { formatEntero, formatMoneda, fecha } from '@/lib/format'
+import type { CarteraCotizacion, CarteraFactura, EstatusFactura } from '@/lib/types'
 
 export function ClienteDetallePage() {
   const { id = '' } = useParams<{ id: string }>()
-  const [cliente, setCliente] = useState<ClienteConCartera | null>(null)
-  const [cargando, setCargando] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const navigate = useNavigate()
+  const { data: cliente, loading, error, reload } = useAsync(() => obtenerCliente(id), [id])
 
-  useEffect(() => {
-    let active = true
-    void (async () => {
-      try {
-        const data = await obtenerCliente(id)
-        if (active) setCliente(data)
-      } catch (e) {
-        if (active) {
-          setError(errorCode(e) === 'NOT_FOUND' ? 'El cliente no existe.' : 'No se pudo cargar el cliente.')
-        }
-      } finally {
-        if (active) setCargando(false)
-      }
-    })()
-    return () => {
-      active = false
-    }
-  }, [id])
+  const colsCot: Column<CarteraCotizacion>[] = [
+    { key: 'cot', header: 'Cotización', mono: true, render: (r) => r.ID_Cotizacion },
+    { key: 'po', header: 'PO', mono: true, render: (r) => r.PO_Referencia ?? '—' },
+    {
+      key: 'piezas',
+      header: 'Piezas',
+      num: true,
+      render: (r) => (r.Piezas_Autorizadas ? formatEntero(r.Piezas_Autorizadas) : '—'),
+    },
+    { key: 'aut', header: 'Autorizado', num: true, render: (r) => formatMoneda(r.Monto_Autorizado) },
+    { key: 'dev', header: 'Devengado', num: true, render: (r) => formatMoneda(r.devengado) },
+    { key: 'disp', header: 'Disponible', num: true, render: (r) => formatMoneda(r.disponible) },
+    { key: 'estatus', header: 'Estatus', render: (r) => r.Estatus },
+  ]
+
+  const colsFac: Column<CarteraFactura>[] = [
+    { key: 'folio', header: 'Folio', mono: true, render: (r) => r.Folio_Factura },
+    { key: 'emision', header: 'Emisión', render: (r) => fecha(r.Fecha_Emision) },
+    { key: 'venc', header: 'Vence', render: (r) => fecha(r.Fecha_Vencimiento) },
+    {
+      key: 'estado',
+      header: 'Estado',
+      render: (r) => <StatusBadge estado={badgeDePago(r.Estatus_Pago as EstatusFactura)} />,
+    },
+    { key: 'total', header: 'Total', num: true, render: (r) => formatMoneda(r.Monto_Total) },
+    { key: 'pagado', header: 'Pagado', num: true, render: (r) => formatMoneda(r.pagado) },
+    { key: 'saldo', header: 'Saldo', num: true, render: (r) => <strong>{formatMoneda(r.saldo)}</strong> },
+  ]
 
   return (
-    <main className="min-h-screen bg-slate-50">
-      <header className="bg-primary text-white">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4">
-          <h1 className="text-lg font-bold">Detalle de cliente</h1>
-          <Link to="/clientes" className="text-sm font-medium underline-offset-2 hover:underline">
-            ← Clientes
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        title="Detalle de cliente"
+        description={cliente ? cliente.ID_Cliente : undefined}
+        actions={
+          <Link to="/clientes">
+            <Button variant="ghost" icon={<ArrowLeft className="h-4 w-4" aria-hidden />}>
+              Clientes
+            </Button>
           </Link>
-        </div>
-      </header>
+        }
+      />
 
-      <section className="mx-auto max-w-5xl px-4 py-8">
-        {cargando ? (
-          <p className="text-slate-500">Cargando…</p>
-        ) : error !== null ? (
-          <p role="alert" className="rounded-md bg-danger-soft px-3 py-2 text-sm text-danger">
-            {error}
-          </p>
-        ) : cliente === null ? null : (
-          <>
-            <div className="rounded-lg bg-white p-6 shadow-sm">
-              <p className="font-mono text-xs text-slate-500">{cliente.ID_Cliente}</p>
-              <h2 className="text-xl font-bold text-slate-900">{cliente.Nombre_Fiscal}</h2>
-              <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-600">
-                {cliente.Nombre_Comercial !== null && cliente.Nombre_Comercial !== '' && (
-                  <span>{cliente.Nombre_Comercial}</span>
-                )}
-                {cliente.RFC !== null && <span>RFC: {cliente.RFC}</span>}
-                <span
-                  className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                    cliente.Estatus === 'Activo' ? 'bg-success-soft text-secondary-strong' : 'bg-slate-100 text-slate-500'
-                  }`}
-                >
-                  {cliente.Estatus}
-                </span>
-              </div>
+      {loading ? (
+        <>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <KpiSkeleton />
+            <KpiSkeleton />
+          </div>
+          <TableSkeleton cols={6} />
+        </>
+      ) : error ? (
+        <ErrorState error={error} onRetry={reload} />
+      ) : cliente ? (
+        <>
+          <Card className="p-6">
+            <p className="font-mono text-xs text-slate-500">{cliente.ID_Cliente}</p>
+            <h2 className="text-xl font-bold text-slate-900">{cliente.Nombre_Fiscal}</h2>
+            <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-600">
+              {cliente.Nombre_Comercial ? <span>{cliente.Nombre_Comercial}</span> : null}
+              {cliente.RFC ? <span>RFC: {cliente.RFC}</span> : null}
+              <span
+                className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                  cliente.Estatus === 'Activo'
+                    ? 'bg-success-soft text-secondary-strong'
+                    : 'bg-slate-100 text-slate-500'
+                }`}
+              >
+                {cliente.Estatus}
+              </span>
             </div>
+          </Card>
 
-            <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="rounded-lg bg-white p-5 shadow-sm">
-                <p className="text-sm text-slate-500">Total autorizado (cotizaciones)</p>
-                <p className="mt-1 text-2xl font-bold text-slate-900">
-                  {formatMoneda(cliente.cartera.total_autorizado)}
-                </p>
-              </div>
-              <div className="rounded-lg bg-white p-5 shadow-sm">
-                <p className="text-sm text-slate-500">Saldo por cobrar</p>
-                <p className="mt-1 text-2xl font-bold text-slate-900">
-                  {formatMoneda(cliente.cartera.saldo_por_cobrar)}
-                </p>
-                <p className="mt-1 text-xs text-slate-400">Se alimenta con facturas/pagos (Sprint 3).</p>
-              </div>
-            </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <KpiCard
+              label="Total autorizado"
+              value={formatMoneda(cliente.cartera.total_autorizado)}
+              note="Suma de cotizaciones"
+              accent="primary"
+              icon={<FileSpreadsheet className="h-5 w-5" aria-hidden />}
+            />
+            <KpiCard
+              label="Saldo por cobrar"
+              value={formatMoneda(cliente.cartera.saldo_por_cobrar)}
+              note="Neto de abonos"
+              accent="warning"
+              icon={<Wallet className="h-5 w-5" aria-hidden />}
+            />
+          </div>
 
-            <h3 className="mt-8 mb-2 font-semibold text-slate-900">Cartera de cotizaciones</h3>
-            <div className="overflow-x-auto rounded-lg bg-white shadow-sm">
+          <Card>
+            <CardHeader title="Cartera de cotizaciones" />
+            <div className="p-2 sm:p-4">
               {cliente.cartera.cotizaciones.length === 0 ? (
-                <p className="p-4 text-slate-500">Sin cotizaciones registradas.</p>
+                <EmptyState title="Sin cotizaciones registradas" />
               ) : (
-                <table className="w-full text-left text-sm">
-                  <thead className="border-b border-slate-100 text-xs uppercase text-slate-500">
-                    <tr>
-                      <th className="px-4 py-3">Cotización</th>
-                      <th className="px-4 py-3">PO</th>
-                      <th className="px-4 py-3 text-right">Autorizado</th>
-                      <th className="px-4 py-3 text-right">Devengado</th>
-                      <th className="px-4 py-3 text-right">Disponible</th>
-                      <th className="px-4 py-3">Estatus</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {cliente.cartera.cotizaciones.map((c) => (
-                      <tr key={c.ID_Cotizacion} className="hover:bg-slate-50">
-                        <td className="px-4 py-3">
-                          <Link
-                            to={`/cotizaciones/${encodeURIComponent(c.ID_Cotizacion)}`}
-                            className="font-mono text-xs text-primary hover:underline"
-                          >
-                            {c.ID_Cotizacion}
-                          </Link>
-                          {c.Piezas_Autorizadas !== null && (
-                            <span className="block text-xs text-slate-400">
-                              {formatEntero(c.Piezas_Autorizadas)} pzas
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-slate-600">{c.PO_Referencia ?? '—'}</td>
-                        <td className="px-4 py-3 text-right font-medium text-slate-900">
-                          {formatMoneda(c.Monto_Autorizado)}
-                        </td>
-                        <td className="px-4 py-3 text-right text-slate-600">{formatMoneda(c.devengado)}</td>
-                        <td className="px-4 py-3 text-right text-slate-600">{formatMoneda(c.disponible)}</td>
-                        <td className="px-4 py-3 text-slate-600">{c.Estatus}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                  <tfoot className="border-t border-slate-200 bg-slate-50 font-semibold text-slate-900">
-                    <tr>
-                      <td className="px-4 py-3" colSpan={2}>
-                        Total
-                      </td>
-                      <td className="px-4 py-3 text-right">{formatMoneda(cliente.cartera.total_autorizado)}</td>
-                      <td className="px-4 py-3" colSpan={3} />
-                    </tr>
-                  </tfoot>
-                </table>
+                <DataTable
+                  columns={colsCot}
+                  rows={cliente.cartera.cotizaciones}
+                  rowKey={(r) => r.ID_Cotizacion}
+                  onRowClick={(r) => navigate(`/cotizaciones/${encodeURIComponent(r.ID_Cotizacion)}`)}
+                  caption="Cotizaciones del cliente"
+                />
               )}
             </div>
-          </>
-        )}
-      </section>
-    </main>
+          </Card>
+
+          <Card>
+            <CardHeader title="Facturas" />
+            <div className="p-2 sm:p-4">
+              {cliente.cartera.facturas.length === 0 ? (
+                <EmptyState title="Sin facturas registradas" />
+              ) : (
+                <DataTable
+                  columns={colsFac}
+                  rows={cliente.cartera.facturas}
+                  rowKey={(r) => r.Folio_Factura}
+                  onRowClick={(r) => navigate(`/facturas/${encodeURIComponent(r.Folio_Factura)}`)}
+                  caption="Facturas del cliente"
+                />
+              )}
+            </div>
+          </Card>
+        </>
+      ) : null}
+    </div>
   )
 }

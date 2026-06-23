@@ -1,11 +1,14 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AuthProvider } from './context/AuthProvider'
 import { ProtectedRoute } from './components/ProtectedRoute'
+import { AppShell } from './components/layout/AppShell'
 import { LoginPage } from './features/auth/LoginPage'
 import { AccessDeniedPage } from './features/auth/AccessDeniedPage'
-import { HomePage } from './features/home/HomePage'
 import { DashboardPage } from './features/dashboard/DashboardPage'
+import { PorFacturarPage } from './features/dashboard/PorFacturarPage'
+import { PorCobrarPage } from './features/dashboard/PorCobrarPage'
 import { WhitelistPage } from './features/admin/whitelist/WhitelistPage'
+import { ImportPage } from './features/admin/import/ImportPage'
 import { ClientesPage } from './features/clientes/ClientesPage'
 import { ClienteDetallePage } from './features/clientes/ClienteDetallePage'
 import { CotizacionesPage } from './features/cotizaciones/CotizacionesPage'
@@ -13,103 +16,47 @@ import { CotizacionDetallePage } from './features/cotizaciones/CotizacionDetalle
 import { DevengadoPage } from './features/devengado/DevengadoPage'
 import { FacturasPage } from './features/facturas/FacturasPage'
 import { FacturaDetallePage } from './features/facturas/FacturaDetallePage'
-import { ImportPage } from './features/admin/import/ImportPage'
 
 function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
         <Routes>
+          {/* Públicas */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/acceso-denegado" element={<AccessDeniedPage />} />
-          <Route
-            path="/"
-            element={
-              <ProtectedRoute>
-                <HomePage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute>
-                <DashboardPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/clientes"
-            element={
-              <ProtectedRoute>
-                <ClientesPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/clientes/:id"
-            element={
-              <ProtectedRoute>
-                <ClienteDetallePage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/cotizaciones"
-            element={
-              <ProtectedRoute>
-                <CotizacionesPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/cotizaciones/:id"
-            element={
-              <ProtectedRoute>
-                <CotizacionDetallePage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/devengado"
-            element={
-              <ProtectedRoute>
-                <DevengadoPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/facturas"
-            element={
-              <ProtectedRoute>
-                <FacturasPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/facturas/:folio"
-            element={
-              <ProtectedRoute>
-                <FacturaDetallePage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin/whitelist"
-            element={
-              <ProtectedRoute rol="admin">
-                <WhitelistPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin/import"
-            element={
-              <ProtectedRoute rol="admin">
-                <ImportPage />
-              </ProtectedRoute>
-            }
-          />
+
+          {/* Privadas: AppShell protege la sesión y aporta nav lateral + topbar.
+              El gating por rol vive en <ProtectedRoute> sobre rutas concretas. */}
+          <Route element={<AppShell />}>
+            <Route path="/" element={<DashboardPage />} />
+            <Route path="/por-facturar" element={<PorFacturarPage />} />
+            <Route path="/por-cobrar" element={<PorCobrarPage />} />
+            <Route path="/clientes" element={<ClientesPage />} />
+            <Route path="/clientes/:id" element={<ClienteDetallePage />} />
+            <Route path="/cotizaciones" element={<CotizacionesPage />} />
+            <Route path="/cotizaciones/:id" element={<CotizacionDetallePage />} />
+            <Route path="/devengado" element={<DevengadoPage />} />
+            <Route path="/facturas" element={<FacturasPage />} />
+            <Route path="/facturas/:folio" element={<FacturaDetallePage />} />
+            <Route
+              path="/admin/whitelist"
+              element={
+                <ProtectedRoute rol="admin">
+                  <WhitelistPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/import"
+              element={
+                <ProtectedRoute rol="admin">
+                  <ImportPage />
+                </ProtectedRoute>
+              }
+            />
+          </Route>
+
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AuthProvider>

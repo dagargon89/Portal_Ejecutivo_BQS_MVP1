@@ -1,19 +1,28 @@
-import { useEffect, useState } from 'react'
-import type { FormEvent } from 'react'
+/* Detalle de factura: totales, estado, abonos y registro de pago (RF-PAG-01).
+ * El backend valida sobrepago / factura pagada. UI re-estilizada del demo. */
+import { useState } from 'react'
+import type { ChangeEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { errorCode } from '../../lib/api'
-import { obtenerFactura, registrarPago } from '../../lib/facturas'
-import { formatMoneda } from '../../lib/format'
-import type { EstatusFactura, FacturaConDetalle } from '../../lib/types'
-import { useAuth } from '../../hooks/useAuth'
-
-const COLOR_ESTATUS: Record<EstatusFactura, string> = {
-  Vigente: 'bg-primary-soft text-primary',
-  Vencida: 'bg-danger-soft text-danger',
-  Pagada: 'bg-success-soft text-secondary-strong',
-}
-
-type Aviso = { tipo: 'ok' | 'error'; texto: string }
+import { ArrowLeft, Plus } from 'lucide-react'
+import { PageHeader } from '@/components/ui/PageHeader'
+import { Card } from '@/components/ui/Card'
+import { KpiCard } from '@/components/ui/KpiCard'
+import { Button } from '@/components/ui/Button'
+import { TextField } from '@/components/ui/TextField'
+import { Modal } from '@/components/ui/Modal'
+import { DataTable } from '@/components/ui/DataTable'
+import type { Column } from '@/components/ui/DataTable'
+import { StatusBadge, badgeDePago } from '@/components/ui/StatusBadge'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { ErrorState } from '@/components/ui/ErrorState'
+import { KpiSkeleton } from '@/components/ui/Skeleton'
+import { useToast } from '@/components/ui/Toast'
+import { useSession } from '@/auth/session'
+import { useAsync } from '@/hooks/useAsync'
+import { errorFields, errorMessage } from '@/lib/api'
+import { obtenerFactura, registrarPago } from '@/lib/facturas'
+import { formatMoneda, fecha } from '@/lib/format'
+import type { Pago } from '@/lib/types'
 
 interface FormPago {
   ID_Pago: string
@@ -22,66 +31,166 @@ interface FormPago {
   Referencia: string
 }
 
+const colsPagos: Column<Pago>[] = [
+  { key: 'pago', header: 'Pago', mono: true, render: (r) => r.ID_Pago },
+  { key: 'fecha', header: 'Fecha', render: (r) => fecha(r.Fecha_Pago) },
+  { key: 'ref', header: 'Referencia', render: (r) => r.Referencia ?? '—' },
+  { key: 'monto', header: 'Monto', num: true, render: (r) => formatMoneda(r.Monto_Pagado) },
+]
+
 export function FacturaDetallePage() {
   const { folio = '' } = useParams<{ folio: string }>()
-  const { usuario } = useAuth()
-  const puedeEscribir = usuario?.roles.some((r) => r === 'facturacion' || r === 'admin') ?? false
+  const toast = useToast()
+  const { hasRole } = useSession()
+  const puedeEscribir = hasRole('facturacion', 'admin')
 
-  const [factura, setFactura] = useState<FacturaConDetalle | null>(null)
-  const [cargando, setCargando] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [aviso, setAviso] = useState<Aviso | null>(null)
-  const [recargar, setRecargar] = useState(0)
+  const { data: factura, loading, error, reload } = useAsync(() => obtenerFactura(folio), [folio])
+  const [openPago, setOpenPago] = useState(false)
 
-  const [form, setForm] = useState<FormPago | null>(null)
-  const [guardando, setGuardando] = useState(false)
-
-  useEffect(() => {
-    let active = true
-    void (async () => {
-      try {
-        const f = await obtenerFactura(folio)
-        if (active) setFactura(f)
-      } catch (e) {
-        if (active) {
-          setError(errorCode(e) === 'NOT_FOUND' ? 'La factura no existe.' : 'No se pudo cargar la factura.')
+  return (
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        title="Factura"
+        description={factura ? factura.Folio_Factura : undefined}
+        actions={
+          <Link to="/facturas">
+            <Button variant="ghost" icon={<ArrowLeft className="h-4 w-4" aria-hidden />}>
+              Facturas
+            </Button>
+          </Link>
         }
-      } finally {
-        if (active) setCargando(false)
-      }
-    })()
-    return () => {
-      active = false
-    }
-  }, [folio, recargar])
+      />
 
-  function abrirPago() {
-    setForm({ ID_Pago: '', Fecha_Pago: new Date().toISOString().slice(0, 10), Monto_Pagado: '', Referencia: '' })
-    setAviso(null)
+      {loading ? (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <KpiSkeleton />
+          <KpiSkeleton />
+          <KpiSkeleton />
+        </div>
+      ) : error ? (
+        <ErrorState error={error} onRetry={reload} />
+      ) : factura ? (
+        <>
+          <Card className="p-6">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <p className="font-mono text-xs text-slate-500">{factura.Folio_Factura}</p>
+                <Link
+                  to={`/clientes/${encodeURIComponent(factura.ID_Cliente)}`}
+                  className="font-mono text-sm text-primary hover:underline"
+                >
+                  {factura.ID_Cliente}
+                </Link>
+                <p className="mt-1 text-sm text-slate-600">
+                  Emisión {fecha(factura.Fecha_Emision)} · Vence {fecha(factura.Fecha_Vencimiento)}
+                </p>
+              </div>
+              <StatusBadge estado={badgeDePago(factura.Estatus_Pago)} />
+            </div>
+          </Card>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <KpiCard
+              label="Total"
+              value={formatMoneda(factura.Monto_Total)}
+              accent="primary"
+              icon={<span aria-hidden>Σ</span>}
+            />
+            <KpiCard
+              label="Pagado"
+              value={formatMoneda(factura.pagado)}
+              accent="secondary"
+              icon={<span aria-hidden>✓</span>}
+            />
+            <KpiCard
+              label="Saldo por cobrar"
+              value={formatMoneda(factura.saldo)}
+              accent="warning"
+              icon={<span aria-hidden>•</span>}
+            />
+          </div>
+
+          <Card>
+            <div className="flex items-center justify-between gap-4 border-b border-slate-200 px-4 py-3 sm:px-6">
+              <h2 className="text-lg font-semibold text-slate-900">Abonos registrados</h2>
+              {puedeEscribir && factura.Estatus_Pago !== 'Pagada' ? (
+                <Button
+                  variant="secondary"
+                  icon={<Plus className="h-4 w-4" aria-hidden />}
+                  onClick={() => setOpenPago(true)}
+                >
+                  Registrar pago
+                </Button>
+              ) : null}
+            </div>
+            <div className="p-2 sm:p-4">
+              {factura.pagos.length === 0 ? (
+                <EmptyState title="Sin pagos registrados" />
+              ) : (
+                <DataTable
+                  columns={colsPagos}
+                  rows={factura.pagos}
+                  rowKey={(r) => r.ID_Pago}
+                  caption="Abonos de la factura"
+                />
+              )}
+            </div>
+          </Card>
+
+          <RegistrarPagoModal
+            open={openPago}
+            folio={folio}
+            onClose={() => setOpenPago(false)}
+            onRegistrado={() => {
+              setOpenPago(false)
+              toast.push({ tipo: 'success', titulo: 'Pago registrado' })
+              reload()
+            }}
+          />
+        </>
+      ) : null}
+    </div>
+  )
+}
+
+function RegistrarPagoModal({
+  open,
+  folio,
+  onClose,
+  onRegistrado,
+}: {
+  open: boolean
+  folio: string
+  onClose: () => void
+  onRegistrado: () => void
+}) {
+  const toast = useToast()
+  const vacio: FormPago = {
+    ID_Pago: '',
+    Fecha_Pago: new Date().toISOString().slice(0, 10),
+    Monto_Pagado: '',
+    Referencia: '',
+  }
+  const [form, setForm] = useState<FormPago>(vacio)
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [saving, setSaving] = useState(false)
+  const [wasOpen, setWasOpen] = useState(false)
+
+  if (open !== wasOpen) {
+    setWasOpen(open)
+    if (open) {
+      setForm({ ...vacio, Fecha_Pago: new Date().toISOString().slice(0, 10) })
+      setErrors({})
+    }
   }
 
-  function mensajeError(code: string | null): string {
-    switch (code) {
-      case 'OVERPAYMENT':
-        return 'El abono excede el saldo pendiente de la factura.'
-      case 'ILLEGAL_TRANSITION':
-        return 'La factura ya está pagada; no admite más pagos.'
-      case 'VALIDATION':
-        return 'El monto del pago debe ser numérico y mayor a cero.'
-      case 'READ_ONLY':
-        return 'Tu rol es de solo lectura; no puedes registrar pagos.'
-      case 'FORBIDDEN':
-        return 'Solo facturación puede registrar pagos.'
-      default:
-        return 'No se pudo registrar el pago.'
-    }
-  }
+  const set =
+    (k: keyof FormPago) => (e: ChangeEvent<HTMLInputElement>) =>
+      setForm((f) => ({ ...f, [k]: e.target.value }))
 
-  async function pagar(e: FormEvent) {
-    e.preventDefault()
-    if (form === null) return
-    setGuardando(true)
-    setAviso(null)
+  async function pagar() {
+    setSaving(true)
+    setErrors({})
     try {
       await registrarPago(folio, {
         ID_Pago: form.ID_Pago.trim().toUpperCase(),
@@ -89,185 +198,38 @@ export function FacturaDetallePage() {
         Monto_Pagado: form.Monto_Pagado.trim(),
         Referencia: form.Referencia.trim() !== '' ? form.Referencia.trim() : null,
       })
-      setForm(null)
-      setAviso({ tipo: 'ok', texto: 'Pago registrado.' })
-      setRecargar((n) => n + 1)
-    } catch (err) {
-      setAviso({ tipo: 'error', texto: mensajeError(errorCode(err)) })
+      onRegistrado()
+    } catch (e) {
+      const fields = errorFields(e)
+      if (fields) setErrors(fields)
+      toast.push({ tipo: 'error', titulo: 'No se pudo registrar', descripcion: errorMessage(e) })
     } finally {
-      setGuardando(false)
+      setSaving(false)
     }
   }
 
   return (
-    <main className="min-h-screen bg-slate-50">
-      <header className="bg-primary text-white">
-        <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-4">
-          <h1 className="text-lg font-bold">Factura</h1>
-          <Link to="/facturas" className="text-sm font-medium underline-offset-2 hover:underline">
-            ← Facturas
-          </Link>
-        </div>
-      </header>
-
-      <section className="mx-auto max-w-4xl px-4 py-8">
-        {cargando ? (
-          <p className="text-slate-500">Cargando…</p>
-        ) : error !== null ? (
-          <p role="alert" className="rounded-md bg-danger-soft px-3 py-2 text-sm text-danger">
-            {error}
-          </p>
-        ) : factura === null ? null : (
-          <>
-            <div className="rounded-lg bg-white p-6 shadow-sm">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div>
-                  <p className="font-mono text-xs text-slate-500">{factura.Folio_Factura}</p>
-                  <Link
-                    to={`/clientes/${encodeURIComponent(factura.ID_Cliente)}`}
-                    className="text-sm text-primary hover:underline"
-                  >
-                    {factura.ID_Cliente}
-                  </Link>
-                </div>
-                <span className={`rounded-full px-3 py-1 text-xs font-medium ${COLOR_ESTATUS[factura.Estatus_Pago]}`}>
-                  {factura.Estatus_Pago}
-                </span>
-              </div>
-              <div className="mt-2 text-sm text-slate-600">
-                Emisión {factura.Fecha_Emision} · Vence {factura.Fecha_Vencimiento}
-              </div>
-            </div>
-
-            <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-              <Metrica etiqueta="Total" valor={formatMoneda(factura.Monto_Total)} />
-              <Metrica etiqueta="Pagado" valor={formatMoneda(factura.pagado)} />
-              <Metrica etiqueta="Saldo por cobrar" valor={formatMoneda(factura.saldo)} fuerte />
-            </div>
-
-            {aviso !== null && (
-              <p
-                role="alert"
-                className={`mt-6 rounded-md px-3 py-2 text-sm ${
-                  aviso.tipo === 'ok' ? 'bg-success-soft text-secondary-strong' : 'bg-danger-soft text-danger'
-                }`}
-              >
-                {aviso.texto}
-              </p>
-            )}
-
-            {puedeEscribir && factura.Estatus_Pago !== 'Pagada' && form === null && (
-              <button
-                type="button"
-                onClick={abrirPago}
-                className="mt-6 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-hover"
-              >
-                + Registrar pago
-              </button>
-            )}
-
-            {form !== null && (
-              <form onSubmit={pagar} className="mt-6 grid grid-cols-1 gap-3 rounded-lg bg-white p-4 shadow-sm sm:grid-cols-2">
-                <h2 className="col-span-full font-semibold text-slate-900">Registrar abono</h2>
-                <label className="text-sm">
-                  <span className="mb-1 block font-medium text-slate-700">ID de pago (opcional)</span>
-                  <input
-                    value={form.ID_Pago}
-                    onChange={(e) => setForm({ ...form, ID_Pago: e.target.value })}
-                    placeholder="(automático)"
-                    className="w-full rounded-md border border-slate-300 px-3 py-2 outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
-                  />
-                </label>
-                <label className="text-sm">
-                  <span className="mb-1 block font-medium text-slate-700">Fecha de pago</span>
-                  <input
-                    required
-                    type="date"
-                    value={form.Fecha_Pago}
-                    onChange={(e) => setForm({ ...form, Fecha_Pago: e.target.value })}
-                    className="w-full rounded-md border border-slate-300 px-3 py-2 outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
-                  />
-                </label>
-                <label className="text-sm">
-                  <span className="mb-1 block font-medium text-slate-700">Monto del abono (MXN)</span>
-                  <input
-                    required
-                    inputMode="decimal"
-                    value={form.Monto_Pagado}
-                    onChange={(e) => setForm({ ...form, Monto_Pagado: e.target.value })}
-                    placeholder="20000.00"
-                    className="w-full rounded-md border border-slate-300 px-3 py-2 outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
-                  />
-                </label>
-                <label className="text-sm">
-                  <span className="mb-1 block font-medium text-slate-700">Referencia</span>
-                  <input
-                    value={form.Referencia}
-                    onChange={(e) => setForm({ ...form, Referencia: e.target.value })}
-                    placeholder="SPEI / cheque…"
-                    className="w-full rounded-md border border-slate-300 px-3 py-2 outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
-                  />
-                </label>
-                <div className="col-span-full flex gap-2">
-                  <button
-                    type="submit"
-                    disabled={guardando}
-                    className="rounded-md bg-primary px-4 py-2 font-semibold text-white transition-colors hover:bg-primary-hover disabled:opacity-60"
-                  >
-                    {guardando ? 'Registrando…' : 'Registrar pago'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setForm(null)}
-                    className="rounded-md border border-slate-300 px-4 py-2 font-medium text-slate-600 transition-colors hover:bg-slate-100"
-                  >
-                    Cancelar
-                  </button>
-                </div>
-              </form>
-            )}
-
-            <h3 className="mt-8 mb-2 font-semibold text-slate-900">Abonos registrados</h3>
-            <div className="overflow-x-auto rounded-lg bg-white shadow-sm">
-              {factura.pagos.length === 0 ? (
-                <p className="p-4 text-slate-500">Sin pagos registrados.</p>
-              ) : (
-                <table className="w-full text-left text-sm">
-                  <thead className="border-b border-slate-100 text-xs uppercase text-slate-500">
-                    <tr>
-                      <th className="px-4 py-3">Pago</th>
-                      <th className="px-4 py-3">Fecha</th>
-                      <th className="px-4 py-3">Referencia</th>
-                      <th className="px-4 py-3 text-right">Monto</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {factura.pagos.map((p) => (
-                      <tr key={p.ID_Pago} className="hover:bg-slate-50">
-                        <td className="px-4 py-3 font-mono text-xs text-slate-700">{p.ID_Pago}</td>
-                        <td className="px-4 py-3 text-slate-600">{p.Fecha_Pago}</td>
-                        <td className="px-4 py-3 text-slate-600">{p.Referencia ?? '—'}</td>
-                        <td className="px-4 py-3 text-right font-medium text-slate-900">{formatMoneda(p.Monto_Pagado)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-          </>
-        )}
-      </section>
-    </main>
-  )
-}
-
-function Metrica({ etiqueta, valor, fuerte = false }: { etiqueta: string; valor: string; fuerte?: boolean }) {
-  return (
-    <div className="rounded-lg bg-white p-5 shadow-sm">
-      <p className="text-sm text-slate-500">{etiqueta}</p>
-      <p className={`mt-1 ${fuerte ? 'text-2xl font-bold text-slate-900' : 'text-lg font-semibold text-slate-700'}`}>
-        {valor}
-      </p>
-    </div>
+    <Modal
+      open={open}
+      title="Registrar abono"
+      onClose={onClose}
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button onClick={pagar} loading={saving}>
+            Registrar pago
+          </Button>
+        </>
+      }
+    >
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <TextField label="ID de pago (opcional)" placeholder="(automático)" value={form.ID_Pago} onChange={set('ID_Pago')} error={errors.ID_Pago} />
+        <TextField label="Fecha de pago" type="date" value={form.Fecha_Pago} onChange={set('Fecha_Pago')} error={errors.Fecha_Pago} />
+        <TextField label="Monto del abono (MXN)" inputMode="decimal" placeholder="20000.00" value={form.Monto_Pagado} onChange={set('Monto_Pagado')} error={errors.Monto_Pagado} />
+        <TextField label="Referencia" placeholder="SPEI / cheque…" value={form.Referencia} onChange={set('Referencia')} error={errors.Referencia} />
+      </div>
+    </Modal>
   )
 }

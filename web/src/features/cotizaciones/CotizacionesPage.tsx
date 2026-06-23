@@ -1,12 +1,30 @@
-import { useEffect, useState } from 'react'
-import type { FormEvent } from 'react'
-import { Link } from 'react-router-dom'
-import { errorCode } from '../../lib/api'
-import { actualizarCotizacion, crearCotizacion, listarCotizaciones } from '../../lib/cotizaciones'
-import type { CotizacionPayload } from '../../lib/cotizaciones'
-import { formatMoneda } from '../../lib/format'
-import type { Cotizacion, PaginationMeta } from '../../lib/types'
-import { useAuth } from '../../hooks/useAuth'
+/* Cotizaciones (Tier 0): lista con filtros por cliente/estatus y alta/edición
+ * (rol facturación o admin) en modal. UI re-estilizada del demo, cableada a la
+ * capa real (lib/cotizaciones + Axios). */
+import { useState } from 'react'
+import type { ChangeEvent } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { Plus, FileSpreadsheet } from 'lucide-react'
+import { PageHeader } from '@/components/ui/PageHeader'
+import { Card } from '@/components/ui/Card'
+import { Button } from '@/components/ui/Button'
+import { TextField } from '@/components/ui/TextField'
+import { Select } from '@/components/ui/Select'
+import { Modal } from '@/components/ui/Modal'
+import { DataTable } from '@/components/ui/DataTable'
+import type { Column } from '@/components/ui/DataTable'
+import { Pagination } from '@/components/ui/Pagination'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { ErrorState } from '@/components/ui/ErrorState'
+import { TableSkeleton } from '@/components/ui/Skeleton'
+import { useToast } from '@/components/ui/Toast'
+import { useSession } from '@/auth/session'
+import { useAsync } from '@/hooks/useAsync'
+import { errorFields, errorMessage } from '@/lib/api'
+import { actualizarCotizacion, crearCotizacion, listarCotizaciones } from '@/lib/cotizaciones'
+import type { CotizacionPayload } from '@/lib/cotizaciones'
+import { formatMoneda } from '@/lib/format'
+import type { Cotizacion } from '@/lib/types'
 
 const ESTATUS: Cotizacion['Estatus'][] = ['Aprobada', 'Pendiente PO', 'Cerrada']
 
@@ -19,67 +37,26 @@ const VACIO: CotizacionPayload = {
   Estatus: 'Pendiente PO',
 }
 
-type Aviso = { tipo: 'ok' | 'error'; texto: string }
-
 export function CotizacionesPage() {
-  const { usuario } = useAuth()
-  const puedeEscribir =
-    usuario?.roles.some((r) => r === 'facturacion' || r === 'admin') ?? false
+  const navigate = useNavigate()
+  const toast = useToast()
+  const { hasRole } = useSession()
+  const puedeEscribir = hasRole('facturacion', 'admin')
 
-  const [cotizaciones, setCotizaciones] = useState<Cotizacion[]>([])
-  const [meta, setMeta] = useState<PaginationMeta | null>(null)
-  const [cargando, setCargando] = useState(true)
-  const [aviso, setAviso] = useState<Aviso | null>(null)
-
-  const [filtroCliente, setFiltroCliente] = useState('')
-  const [filtroEstatus, setFiltroEstatus] = useState('')
+  const [idCliente, setIdCliente] = useState('')
+  const [estatus, setEstatus] = useState('')
   const [page, setPage] = useState(1)
-  const [aplicado, setAplicado] = useState<{ idCliente: string; estatus: string }>({
-    idCliente: '',
-    estatus: '',
-  })
-  const [recargar, setRecargar] = useState(0)
-
   const [form, setForm] = useState<CotizacionPayload | null>(null)
   const [editandoId, setEditandoId] = useState<string | null>(null)
-  const [guardando, setGuardando] = useState(false)
 
-  // El setState ocurre DESPUES del await (no sincrono en el cuerpo del efecto),
-  // con guarda `active` para evitar updates tras desmontar.
-  useEffect(() => {
-    let active = true
-    void (async () => {
-      try {
-        const { cotizaciones: filas, meta: m } = await listarCotizaciones({
-          idCliente: aplicado.idCliente,
-          estatus: aplicado.estatus,
-          page,
-        })
-        if (active) {
-          setCotizaciones(filas)
-          setMeta(m)
-        }
-      } catch {
-        if (active) setAviso({ tipo: 'error', texto: 'No se pudieron cargar las cotizaciones.' })
-      } finally {
-        if (active) setCargando(false)
-      }
-    })()
-    return () => {
-      active = false
-    }
-  }, [aplicado, page, recargar])
-
-  function buscar(e: FormEvent) {
-    e.preventDefault()
-    setPage(1)
-    setAplicado({ idCliente: filtroCliente, estatus: filtroEstatus })
-  }
+  const { data, loading, error, reload } = useAsync(
+    () => listarCotizaciones({ idCliente: idCliente || undefined, estatus: estatus || undefined, page }),
+    [idCliente, estatus, page],
+  )
 
   function abrirNueva() {
     setEditandoId(null)
     setForm({ ...VACIO })
-    setAviso(null)
   }
 
   function abrirEdicion(c: Cotizacion) {
@@ -92,39 +69,163 @@ export function CotizacionesPage() {
       Piezas_Autorizadas: c.Piezas_Autorizadas ?? '',
       Estatus: c.Estatus,
     })
-    setAviso(null)
   }
 
-  function mensajeError(code: string | null): string {
-    switch (code) {
-      case 'CONFLICT':
-        return 'El ID de cotización ya existe.'
-      case 'NOT_FOUND':
-        return 'El cliente referenciado no existe.'
-      case 'VALIDATION':
-        return 'Revisa los datos: ID COT-XXXX, monto numérico ≥ 0 y cliente válido.'
-      case 'READ_ONLY':
-        return 'Tu rol es de solo lectura; no puedes guardar cambios.'
-      case 'FORBIDDEN':
-        return 'No tienes permiso para gestionar cotizaciones.'
-      default:
-        return 'No se pudo guardar la cotización.'
-    }
+  const columns: Column<Cotizacion>[] = [
+    { key: 'cot', header: 'Cotización', mono: true, render: (r) => r.ID_Cotizacion },
+    { key: 'cliente', header: 'Cliente', mono: true, render: (r) => r.ID_Cliente },
+    { key: 'po', header: 'PO', render: (r) => r.PO_Referencia ?? '—' },
+    { key: 'aut', header: 'Autorizado', num: true, render: (r) => formatMoneda(r.Monto_Autorizado) },
+    { key: 'estatus', header: 'Estatus', render: (r) => r.Estatus },
+    ...(puedeEscribir
+      ? [
+          {
+            key: 'acciones',
+            header: '',
+            align: 'right' as const,
+            thClassName: 'w-24',
+            render: (r: Cotizacion) => (
+              <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
+                <button
+                  type="button"
+                  onClick={() => abrirEdicion(r)}
+                  className="rounded-md border border-slate-300 px-2.5 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                >
+                  Editar
+                </button>
+              </div>
+            ),
+          },
+        ]
+      : []),
+  ]
+
+  return (
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        title="Cotizaciones"
+        description="Montos y piezas autorizadas por cliente; base del consumo devengado."
+        actions={
+          puedeEscribir ? (
+            <Button icon={<Plus className="h-4 w-4" aria-hidden />} onClick={abrirNueva}>
+              Nueva cotización
+            </Button>
+          ) : undefined
+        }
+      />
+
+      <Card className="p-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_220px]">
+          <TextField
+            label=""
+            aria-label="Filtrar por ID de cliente"
+            placeholder="Filtrar por ID_Cliente (CLI-001)…"
+            value={idCliente}
+            onChange={(e) => {
+              setIdCliente(e.target.value)
+              setPage(1)
+            }}
+          />
+          <Select
+            label=""
+            aria-label="Filtrar por estatus"
+            value={estatus}
+            onChange={(e) => {
+              setEstatus(e.target.value)
+              setPage(1)
+            }}
+          >
+            <option value="">Todos los estatus</option>
+            {ESTATUS.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </Select>
+        </div>
+      </Card>
+
+      {loading ? (
+        <TableSkeleton cols={6} />
+      ) : error ? (
+        <ErrorState error={error} onRetry={reload} />
+      ) : data && data.cotizaciones.length === 0 ? (
+        <EmptyState
+          icon={<FileSpreadsheet className="h-8 w-8" />}
+          title="Sin cotizaciones"
+          message="No hay cotizaciones que coincidan con el filtro."
+        />
+      ) : data ? (
+        <>
+          <DataTable
+            columns={columns}
+            rows={data.cotizaciones}
+            rowKey={(r) => r.ID_Cotizacion}
+            onRowClick={(r) => navigate(`/cotizaciones/${encodeURIComponent(r.ID_Cotizacion)}`)}
+            caption="Lista de cotizaciones"
+          />
+          <Pagination meta={data.meta} onPage={setPage} />
+        </>
+      ) : null}
+
+      <CotizacionModal
+        form={form}
+        editandoId={editandoId}
+        onClose={() => {
+          setForm(null)
+          setEditandoId(null)
+        }}
+        onSaved={() => {
+          const editaba = editandoId !== null
+          setForm(null)
+          setEditandoId(null)
+          toast.push({ tipo: 'success', titulo: editaba ? 'Cotización actualizada' : 'Cotización creada' })
+          reload()
+        }}
+      />
+    </div>
+  )
+}
+
+function CotizacionModal({
+  form,
+  editandoId,
+  onClose,
+  onSaved,
+}: {
+  form: CotizacionPayload | null
+  editandoId: string | null
+  onClose: () => void
+  onSaved: () => void
+}) {
+  const toast = useToast()
+  const [local, setLocal] = useState<CotizacionPayload>(form ?? VACIO)
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [saving, setSaving] = useState(false)
+  const [signature, setSignature] = useState<string | null>(null)
+
+  const sig = form ? `${editandoId ?? 'nueva'}:${form.ID_Cotizacion}` : null
+  if (sig !== signature) {
+    setSignature(sig)
+    setLocal(form ?? VACIO)
+    setErrors({})
   }
 
-  async function guardar(e: FormEvent) {
-    e.preventDefault()
-    if (form === null) return
-    setGuardando(true)
-    setAviso(null)
+  const set =
+    (k: keyof CotizacionPayload) => (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+      setLocal((f) => ({ ...f, [k]: e.target.value }))
+
+  async function guardar() {
+    setSaving(true)
+    setErrors({})
     try {
       const payload: CotizacionPayload = {
-        ...form,
-        ID_Cotizacion: form.ID_Cotizacion.trim().toUpperCase(),
-        ID_Cliente: form.ID_Cliente.trim().toUpperCase(),
-        PO_Referencia: form.PO_Referencia?.trim() ? form.PO_Referencia.trim() : null,
-        Monto_Autorizado: form.Monto_Autorizado.trim(),
-        Piezas_Autorizadas: form.Piezas_Autorizadas?.trim() ? form.Piezas_Autorizadas.trim() : null,
+        ...local,
+        ID_Cotizacion: local.ID_Cotizacion.trim().toUpperCase(),
+        ID_Cliente: local.ID_Cliente.trim().toUpperCase(),
+        PO_Referencia: local.PO_Referencia?.trim() ? local.PO_Referencia.trim() : null,
+        Monto_Autorizado: local.Monto_Autorizado.trim(),
+        Piezas_Autorizadas: local.Piezas_Autorizadas?.trim() ? local.Piezas_Autorizadas.trim() : null,
       }
       if (editandoId !== null) {
         await actualizarCotizacion(editandoId, {
@@ -133,251 +234,81 @@ export function CotizacionesPage() {
           Piezas_Autorizadas: payload.Piezas_Autorizadas,
           Estatus: payload.Estatus,
         })
-        setAviso({ tipo: 'ok', texto: 'Cotización actualizada.' })
       } else {
         await crearCotizacion(payload)
-        setAviso({ tipo: 'ok', texto: 'Cotización creada.' })
       }
-      setForm(null)
-      setEditandoId(null)
-      setRecargar((n) => n + 1)
-    } catch (error) {
-      setAviso({ tipo: 'error', texto: mensajeError(errorCode(error)) })
+      onSaved()
+    } catch (e) {
+      const fields = errorFields(e)
+      if (fields) setErrors(fields)
+      toast.push({ tipo: 'error', titulo: 'No se pudo guardar', descripcion: errorMessage(e) })
     } finally {
-      setGuardando(false)
+      setSaving(false)
     }
   }
 
+  const bloqueado = editandoId !== null
+
   return (
-    <main className="min-h-screen bg-slate-50">
-      <header className="bg-primary text-white">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4">
-          <h1 className="text-lg font-bold">Cotizaciones (Tier 0)</h1>
-          <Link to="/" className="text-sm font-medium underline-offset-2 hover:underline">
-            ← Inicio
-          </Link>
-        </div>
-      </header>
-
-      <section className="mx-auto max-w-5xl px-4 py-8">
-        <form onSubmit={buscar} className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
-          <input
-            type="search"
-            value={filtroCliente}
-            onChange={(e) => setFiltroCliente(e.target.value)}
-            placeholder="Filtrar por ID_Cliente (CLI-001)…"
-            aria-label="Filtrar por cliente"
-            className="flex-1 rounded-md border border-slate-300 px-3 py-2 outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
-          />
-          <select
-            value={filtroEstatus}
-            onChange={(e) => setFiltroEstatus(e.target.value)}
-            aria-label="Filtrar por estatus"
-            className="rounded-md border border-slate-300 px-3 py-2 outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
-          >
-            <option value="">Todos</option>
-            {ESTATUS.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
-          <button
-            type="submit"
-            className="rounded-md bg-primary px-4 py-2 font-semibold text-white transition-colors hover:bg-primary-hover"
-          >
-            Filtrar
-          </button>
-          {puedeEscribir && (
-            <button
-              type="button"
-              onClick={abrirNueva}
-              className="rounded-md border border-primary px-4 py-2 font-semibold text-primary transition-colors hover:bg-primary-soft"
-            >
-              + Nueva
-            </button>
-          )}
-        </form>
-
-        {aviso !== null && (
-          <p
-            role="alert"
-            className={`mb-4 rounded-md px-3 py-2 text-sm ${
-              aviso.tipo === 'ok' ? 'bg-success-soft text-secondary-strong' : 'bg-danger-soft text-danger'
-            }`}
-          >
-            {aviso.texto}
-          </p>
-        )}
-
-        {form !== null && (
-          <form onSubmit={guardar} className="mb-6 grid grid-cols-1 gap-3 rounded-lg bg-white p-4 shadow-sm sm:grid-cols-2">
-            <h2 className="col-span-full font-semibold text-slate-900">
-              {editandoId !== null ? `Editar ${editandoId}` : 'Nueva cotización'}
-            </h2>
-            <label className="text-sm">
-              <span className="mb-1 block font-medium text-slate-700">ID_Cotizacion</span>
-              <input
-                required
-                disabled={editandoId !== null}
-                value={form.ID_Cotizacion}
-                onChange={(e) => setForm({ ...form, ID_Cotizacion: e.target.value })}
-                placeholder="COT-0001"
-                className="w-full rounded-md border border-slate-300 px-3 py-2 outline-none focus:border-primary focus:ring-2 focus:ring-primary/30 disabled:bg-slate-100"
-              />
-            </label>
-            <label className="text-sm">
-              <span className="mb-1 block font-medium text-slate-700">ID_Cliente</span>
-              <input
-                required
-                disabled={editandoId !== null}
-                value={form.ID_Cliente}
-                onChange={(e) => setForm({ ...form, ID_Cliente: e.target.value })}
-                placeholder="CLI-001"
-                className="w-full rounded-md border border-slate-300 px-3 py-2 outline-none focus:border-primary focus:ring-2 focus:ring-primary/30 disabled:bg-slate-100"
-              />
-            </label>
-            <label className="text-sm">
-              <span className="mb-1 block font-medium text-slate-700">PO de referencia</span>
-              <input
-                value={form.PO_Referencia ?? ''}
-                onChange={(e) => setForm({ ...form, PO_Referencia: e.target.value })}
-                className="w-full rounded-md border border-slate-300 px-3 py-2 outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
-              />
-            </label>
-            <label className="text-sm">
-              <span className="mb-1 block font-medium text-slate-700">Monto autorizado (MXN)</span>
-              <input
-                required
-                inputMode="decimal"
-                value={form.Monto_Autorizado}
-                onChange={(e) => setForm({ ...form, Monto_Autorizado: e.target.value })}
-                placeholder="100000.00"
-                className="w-full rounded-md border border-slate-300 px-3 py-2 outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
-              />
-            </label>
-            <label className="text-sm">
-              <span className="mb-1 block font-medium text-slate-700">Piezas autorizadas</span>
-              <input
-                inputMode="numeric"
-                value={form.Piezas_Autorizadas ?? ''}
-                onChange={(e) => setForm({ ...form, Piezas_Autorizadas: e.target.value })}
-                className="w-full rounded-md border border-slate-300 px-3 py-2 outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
-              />
-            </label>
-            <label className="text-sm">
-              <span className="mb-1 block font-medium text-slate-700">Estatus</span>
-              <select
-                value={form.Estatus}
-                onChange={(e) => setForm({ ...form, Estatus: e.target.value })}
-                className="w-full rounded-md border border-slate-300 px-3 py-2 outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
-              >
-                {ESTATUS.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <div className="col-span-full flex gap-2">
-              <button
-                type="submit"
-                disabled={guardando}
-                className="rounded-md bg-primary px-4 py-2 font-semibold text-white transition-colors hover:bg-primary-hover disabled:opacity-60"
-              >
-                {guardando ? 'Guardando…' : 'Guardar'}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setForm(null)
-                  setEditandoId(null)
-                }}
-                className="rounded-md border border-slate-300 px-4 py-2 font-medium text-slate-600 transition-colors hover:bg-slate-100"
-              >
-                Cancelar
-              </button>
-            </div>
-          </form>
-        )}
-
-        <div className="overflow-x-auto rounded-lg bg-white shadow-sm">
-          {cargando ? (
-            <p className="p-4 text-slate-500">Cargando…</p>
-          ) : cotizaciones.length === 0 ? (
-            <p className="p-4 text-slate-500">No hay cotizaciones que coincidan.</p>
-          ) : (
-            <table className="w-full text-left text-sm">
-              <thead className="border-b border-slate-100 text-xs uppercase text-slate-500">
-                <tr>
-                  <th className="px-4 py-3">Cotización</th>
-                  <th className="px-4 py-3">Cliente</th>
-                  <th className="px-4 py-3">PO</th>
-                  <th className="px-4 py-3 text-right">Autorizado</th>
-                  <th className="px-4 py-3">Estatus</th>
-                  <th className="px-4 py-3 text-right">Acciones</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {cotizaciones.map((c) => (
-                  <tr key={c.ID_Cotizacion} className="hover:bg-slate-50">
-                    <td className="px-4 py-3 font-mono text-xs text-slate-700">{c.ID_Cotizacion}</td>
-                    <td className="px-4 py-3 font-mono text-xs text-slate-600">{c.ID_Cliente}</td>
-                    <td className="px-4 py-3 text-slate-600">{c.PO_Referencia ?? '—'}</td>
-                    <td className="px-4 py-3 text-right font-medium text-slate-900">
-                      {formatMoneda(c.Monto_Autorizado)}
-                    </td>
-                    <td className="px-4 py-3 text-slate-600">{c.Estatus}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex justify-end gap-2">
-                        <Link
-                          to={`/cotizaciones/${encodeURIComponent(c.ID_Cotizacion)}`}
-                          className="rounded-md border border-primary/30 px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary-soft"
-                        >
-                          Consumo
-                        </Link>
-                        {puedeEscribir && (
-                          <button
-                            type="button"
-                            onClick={() => abrirEdicion(c)}
-                            className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-100"
-                          >
-                            Editar
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-
-        {meta !== null && meta.total_pages > 1 && (
-          <nav className="mt-4 flex items-center justify-between text-sm" aria-label="Paginación">
-            <button
-              type="button"
-              disabled={page <= 1}
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              className="rounded-md border border-slate-300 px-3 py-1.5 font-medium text-slate-600 transition-colors hover:bg-slate-100 disabled:opacity-50"
-            >
-              ← Anterior
-            </button>
-            <span className="text-slate-500">
-              Página {meta.page} de {meta.total_pages} · {meta.total} cotizaciones
-            </span>
-            <button
-              type="button"
-              disabled={page >= meta.total_pages}
-              onClick={() => setPage((p) => p + 1)}
-              className="rounded-md border border-slate-300 px-3 py-1.5 font-medium text-slate-600 transition-colors hover:bg-slate-100 disabled:opacity-50"
-            >
-              Siguiente →
-            </button>
-          </nav>
-        )}
-      </section>
-    </main>
+    <Modal
+      open={form !== null}
+      title={editandoId !== null ? `Editar ${editandoId}` : 'Nueva cotización'}
+      onClose={onClose}
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button onClick={guardar} loading={saving}>
+            Guardar
+          </Button>
+        </>
+      }
+    >
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <TextField
+          label="ID Cotización"
+          placeholder="COT-0001"
+          value={local.ID_Cotizacion}
+          onChange={set('ID_Cotizacion')}
+          error={errors.ID_Cotizacion}
+          disabled={bloqueado}
+        />
+        <TextField
+          label="ID Cliente"
+          placeholder="CLI-001"
+          value={local.ID_Cliente}
+          onChange={set('ID_Cliente')}
+          error={errors.ID_Cliente}
+          disabled={bloqueado}
+        />
+        <TextField
+          label="PO de referencia"
+          value={local.PO_Referencia ?? ''}
+          onChange={set('PO_Referencia')}
+        />
+        <TextField
+          label="Monto autorizado (MXN)"
+          inputMode="decimal"
+          placeholder="100000.00"
+          value={local.Monto_Autorizado}
+          onChange={set('Monto_Autorizado')}
+          error={errors.Monto_Autorizado}
+        />
+        <TextField
+          label="Piezas autorizadas"
+          inputMode="numeric"
+          value={local.Piezas_Autorizadas ?? ''}
+          onChange={set('Piezas_Autorizadas')}
+        />
+        <Select label="Estatus" value={local.Estatus} onChange={set('Estatus')}>
+          {ESTATUS.map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
+        </Select>
+      </div>
+    </Modal>
   )
 }
